@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
+import { motion } from "motion/react";
 import {
   MapPin, Search, X, Settings, Palette, Check, Plus, Trash2,
   Coffee, Navigation, RefreshCw, Droplets, Wind, Eye, Gauge, Sunrise, Sunset,
+  ChevronsDown, CloudSun,
 } from "lucide-react";
 import { Location } from "./types";
 import { TURKEY_PROVINCES, PAKISTAN_CITIES } from "./utils/cityData";
@@ -645,101 +647,205 @@ export default function App() {
     weekday: "short", day: "numeric", month: "short", timeZone: location.timezone || "Europe/Istanbul",
   }).format(new Date(dt * 1000));
 
+  const hdrBtnBg = isLight(themeKey) ? "bg-black/5 border-black/10" : "bg-white/5 border-white/10";
+  const hdrBtnText = th.textSecondary;
+
   return (
-    <div className={`min-h-screen ${th.bg} ${th.textPrimary} relative overflow-hidden`}>
+    <div dir={lang === "ar" || lang === "ur" ? "rtl" : "ltr"}
+      className={`min-h-screen ${th.bg} ${th.textPrimary} relative overflow-hidden p-3 sm:p-6 md:p-8 transition-colors duration-700`}>
       <div className={`pointer-events-none absolute -top-32 -left-32 w-96 h-96 rounded-full blur-3xl ${th.blob1}`} />
       <div className={`pointer-events-none absolute -bottom-32 -right-32 w-96 h-96 rounded-full blur-3xl ${th.blob2}`} />
 
-      {/* Header */}
-      <div className={`flex items-center justify-between px-5 py-4 border-b ${th.header} relative z-10`}>
-        <button onClick={() => { setSettingsTab("konum"); setShowSettings(true); }}
-          className="flex items-center gap-1.5 text-sm">
-          <MapPin size={16} className={th.accent} />
-          <span className="font-medium">{location.name}</span>
-        </button>
-        <button onClick={() => { setSettingsTab("tema"); setShowSettings(true); }}
-          className={`p-2 rounded-full ${th.cardHover}`}>
-          <Settings size={18} className={th.textSecondary} />
-        </button>
-      </div>
+      <div className="w-full max-w-2xl mx-auto flex flex-col gap-4 sm:gap-5 relative z-10 animate-fadeIn">
 
-      {/* Ana içerik */}
-      <div className="relative z-10 px-5 py-6 space-y-6 max-w-xl mx-auto">
+        {/* Header — namaz vaktindeki marka/pill deseniyle */}
+        <header className="flex flex-col gap-2 pb-2">
+          <div className="flex justify-between items-center">
+            <button onClick={() => { setSettingsTab("hakkinda"); setShowSettings(true); }}
+              className="cursor-pointer select-none hover:opacity-75 transition-opacity duration-200 text-left">
+              <div className={`text-2xl sm:text-3xl font-extrabold tracking-widest ${th.accent} leading-none`}>
+                MECCANEN
+              </div>
+            </button>
+            <div className="flex items-center gap-2">
+              {savedLocations.length > 1 ? (
+                <button onClick={() => {
+                    const idx = savedLocations.findIndex(l =>
+                      l.latitude.toFixed(3) === location.latitude.toFixed(3) &&
+                      l.longitude.toFixed(3) === location.longitude.toFixed(3)
+                    );
+                    const next = savedLocations[(idx + 1) % savedLocations.length];
+                    setLocationAndSave(next);
+                  }}
+                  className={`inline-flex items-center gap-1.5 px-4 py-2 border rounded-full text-sm font-bold ${th.accent} ${hdrBtnBg} transition-all cursor-pointer`}>
+                  <MapPin className="w-4 h-4" />{location.name}<ChevronsDown className="w-3.5 h-3.5 -rotate-90" />
+                </button>
+              ) : (
+                <button onClick={() => { setSettingsTab("konum"); setShowSettings(true); }}
+                  className={`inline-flex items-center gap-1.5 px-4 py-2 border rounded-full text-sm font-bold ${th.accent} ${hdrBtnBg}`}>
+                  <MapPin className="w-4 h-4" />{location.name}
+                </button>
+              )}
+              <button onClick={() => { setSettingsTab("tema"); setShowSettings(true); }}
+                className={`p-2.5 border rounded-full transition-all cursor-pointer ${hdrBtnBg} ${hdrBtnText}`}>
+                <Settings className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-2">
+              <span className={`text-sm sm:text-base font-semibold ${th.textSecondary}`}>{t("appName", lang)}</span>
+              <span className={isLight(themeKey) ? "text-slate-400" : "text-slate-600"}>·</span>
+              <span className={`text-sm sm:text-base font-bold ${th.accent}`}>{t("adFree", lang)}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button onClick={() => {
+                  const order: LangCode[] = ["tr", "en", "ar", "de", "ur"];
+                  const next = order[(order.indexOf(lang) + 1) % order.length];
+                  setLang(next);
+                }}
+                className={`px-4 py-1.5 text-sm font-bold border rounded-full transition-all cursor-pointer ${hdrBtnBg} ${hdrBtnText}`}>
+                {lang.toUpperCase()}
+              </button>
+              <button onClick={loadWeather} disabled={weatherLoading}
+                className={`p-2 border rounded-full transition-all cursor-pointer ${hdrBtnBg} ${hdrBtnText}`}>
+                <RefreshCw className={`w-3.5 h-3.5 ${weatherLoading ? "animate-spin" : ""}`} />
+              </button>
+            </div>
+          </div>
+        </header>
+
         {weatherLoading && !weather && (
-          <p className={`text-center text-sm ${th.textMuted} py-10`}>{t("wxLoading", lang)}</p>
+          <div className="flex flex-col items-center gap-3 py-16">
+            <CloudSun size={36} className={`${th.accent} animate-pulse`} />
+            <p className={`text-sm ${th.textMuted}`}>{t("wxLoading", lang)}</p>
+          </div>
         )}
         {weatherError && !weather && (
-          <div className={`text-center text-sm ${th.textMuted} py-10 space-y-2`}>
+          <div className={`text-center text-sm ${th.textMuted} py-16 space-y-3`}>
             <p>{weatherError}</p>
-            <button onClick={loadWeather} className={`text-xs underline ${th.accent}`}>{t("wxRefresh", lang)}</button>
+            <button onClick={loadWeather} className={`px-4 py-2 rounded-full border text-xs font-semibold ${th.card} ${th.accent}`}>
+              {t("wxRefresh", lang)}
+            </button>
           </div>
         )}
 
         {weather && currentMapping && (
           <>
-            <div className={`rounded-3xl border p-6 text-center space-y-2 ${th.card}`}>
-              <currentMapping.iconName size={56} className={`mx-auto ${currentMapping.colorClass}`} />
-              <div className="text-5xl font-light">{weather.current.temperature}°</div>
-              <p className={`text-sm ${th.textSecondary}`}>{currentMapping.desc}</p>
-              <p className={`text-xs ${th.textMuted}`}>{t("wxFeelsLike", lang)} {weather.current.apparentTemperature}°</p>
+            {/* Hero kart — namaz vaktindeki saat kartıyla aynı ağırlıkta (rounded-3xl, shadow-2xl, gradient sayı) */}
+            <section className={`${th.card} border rounded-3xl p-6 sm:p-7 transition-all duration-300 shadow-2xl relative overflow-hidden`}>
+              <div className={`pointer-events-none absolute inset-0 bg-gradient-to-b ${currentMapping.bgClass}`} />
 
-              <div className="grid grid-cols-4 gap-2 pt-4 text-xs">
-                <div className="flex flex-col items-center gap-1">
-                  <Droplets size={14} className={th.textMuted} />
-                  <span>{weather.current.humidity}%</span>
+              <div className="relative flex flex-col items-center">
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.8, y: -8 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  transition={{ duration: 0.5, ease: "easeOut" }}
+                  className="relative mb-1"
+                >
+                  <div className={`absolute inset-0 blur-2xl opacity-40 ${currentMapping.colorClass}`}>
+                    <currentMapping.iconName size={72} />
+                  </div>
+                  <currentMapping.iconName size={72} className={`relative ${currentMapping.colorClass}`} />
+                </motion.div>
+
+                <div className="flex items-start justify-center font-mono select-none">
+                  <span className={`text-6xl sm:text-7xl md:text-8xl font-extrabold text-transparent bg-clip-text bg-gradient-to-b ${th.clockGrad} tracking-tight leading-none`}>
+                    {weather.current.temperature}
+                  </span>
+                  <span className={`text-2xl sm:text-3xl font-light ${th.secColor} mt-1`}>°</span>
                 </div>
-                <div className="flex flex-col items-center gap-1">
-                  <Wind size={14} className={th.textMuted} />
-                  <span>{Math.round(weather.current.windSpeed)} m/s</span>
+                <p className={`text-sm sm:text-base font-medium ${th.textSecondary} mt-1 capitalize`}>{currentMapping.desc}</p>
+
+                <div className={`mt-5 w-full p-4 rounded-2xl border-2 ${th.prayerActive} flex items-center justify-center gap-2 shadow-lg`}>
+                  <span className="text-sm font-semibold uppercase tracking-wide opacity-80">{t("wxFeelsLike", lang)}</span>
+                  <span className="text-xl font-mono font-extrabold">{weather.current.apparentTemperature}°</span>
                 </div>
-                <div className="flex flex-col items-center gap-1">
-                  <Gauge size={14} className={th.textMuted} />
-                  <span>{weather.current.pressure} hPa</span>
+
+                <div className={`w-full border-t pt-4 mt-5 grid grid-cols-4 gap-2 text-xs ${th.header}`}>
+                  <div className="flex flex-col items-center gap-1.5">
+                    <Droplets size={16} className={th.accent2} />
+                    <span className={`font-semibold ${th.textPrimary}`}>{weather.current.humidity}%</span>
+                    <span className={th.textMuted}>{t("wxHumidity", lang)}</span>
+                  </div>
+                  <div className="flex flex-col items-center gap-1.5">
+                    <Wind size={16} className={th.accent2} />
+                    <span className={`font-semibold ${th.textPrimary}`}>{Math.round(weather.current.windSpeed)} m/s</span>
+                    <span className={th.textMuted}>{t("wxWind", lang)}</span>
+                  </div>
+                  <div className="flex flex-col items-center gap-1.5">
+                    <Gauge size={16} className={th.accent2} />
+                    <span className={`font-semibold ${th.textPrimary}`}>{weather.current.pressure}</span>
+                    <span className={th.textMuted}>{t("wxPressure", lang)}</span>
+                  </div>
+                  <div className="flex flex-col items-center gap-1.5">
+                    <Eye size={16} className={th.accent2} />
+                    <span className={`font-semibold ${th.textPrimary}`}>{Math.round(weather.current.visibility / 1000)} km</span>
+                    <span className={th.textMuted}>{t("wxVisibility", lang)}</span>
+                  </div>
                 </div>
-                <div className="flex flex-col items-center gap-1">
-                  <Eye size={14} className={th.textMuted} />
-                  <span>{Math.round(weather.current.visibility / 1000)} km</span>
+
+                <div className="flex justify-center gap-8 pt-4 text-xs">
+                  <div className="flex items-center gap-1.5"><Sunrise size={15} className={th.accent3} />{formatHour(weather.current.sunrise)}</div>
+                  <div className="flex items-center gap-1.5"><Sunset size={15} className={th.accent3} />{formatHour(weather.current.sunset)}</div>
                 </div>
               </div>
+            </section>
 
-              <div className="flex justify-center gap-6 pt-2 text-xs">
-                <div className="flex items-center gap-1"><Sunrise size={14} className={th.textMuted} />{formatHour(weather.current.sunrise)}</div>
-                <div className="flex items-center gap-1"><Sunset size={14} className={th.textMuted} />{formatHour(weather.current.sunset)}</div>
-              </div>
-            </div>
-
-            <div>
-              <p className={`text-xs uppercase tracking-wide mb-2 ${th.textMuted}`}>{t("wxHourlyTitle", lang)}</p>
-              <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-1">
+            {/* Saatlik tahmin */}
+            <section>
+              <p className={`text-xs font-bold uppercase tracking-wide mb-2.5 px-1 ${th.textMuted}`}>{t("wxHourlyTitle", lang)}</p>
+              <div className="flex gap-2.5 overflow-x-auto scrollbar-hide pb-1 -mx-1 px-1">
                 {weather.hourly.map((h, i) => {
                   const m = getWeatherMapping(h.weatherId, h.isDay);
                   return (
-                    <div key={i} className={`flex flex-col items-center gap-1.5 rounded-2xl border px-3 py-3 min-w-[64px] ${th.card}`}>
-                      <span className="text-xs">{i === 0 ? t("wxNow", lang) : formatHour(h.dt)}</span>
-                      <m.iconName size={20} className={m.colorClass} />
-                      <span className="text-sm font-medium">{h.temperature}°</span>
-                    </div>
+                    <motion.div key={i}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.35, delay: Math.min(i, 10) * 0.03 }}
+                      className={`flex flex-col items-center gap-1.5 rounded-2xl border px-3.5 py-3.5 min-w-[68px] shadow-sm ${th.card} ${th.cardHover} transition-colors`}>
+                      <span className={`text-xs font-semibold ${i === 0 ? th.accent : th.textSecondary}`}>
+                        {i === 0 ? t("wxNow", lang) : formatHour(h.dt)}
+                      </span>
+                      <m.iconName size={22} className={m.colorClass} />
+                      <span className="text-sm font-bold">{h.temperature}°</span>
+                      {h.pop > 0.15 && (
+                        <span className={`text-[10px] ${th.accent2}`}>{Math.round(h.pop * 100)}%</span>
+                      )}
+                    </motion.div>
                   );
                 })}
               </div>
-            </div>
+            </section>
 
-            <div>
-              <p className={`text-xs uppercase tracking-wide mb-2 ${th.textMuted}`}>{t("wxDailyTitle", lang)}</p>
-              <div className={`rounded-2xl border divide-y divide-white/5 ${th.card}`}>
+            {/* 7 günlük tahmin */}
+            <section className={`${th.card} border rounded-3xl overflow-hidden shadow-xl`}>
+              <p className={`text-xs font-bold uppercase tracking-wide px-4 pt-4 pb-1 ${th.textMuted}`}>{t("wxDailyTitle", lang)}</p>
+              <div className={`divide-y ${isLight(themeKey) ? "divide-black/5" : "divide-white/5"}`}>
                 {weather.daily.map((d, i) => {
                   const m = getWeatherMapping(d.weatherId, true);
                   return (
-                    <div key={i} className="flex items-center justify-between px-4 py-3 text-sm">
-                      <span className="w-24 shrink-0">{i === 0 ? t("wxToday", lang) : formatDay(d.dt)}</span>
-                      <m.iconName size={18} className={m.colorClass} />
-                      <span className={`text-xs ${th.textMuted} w-16 text-right`}>{Math.round(d.pop * 100)}%</span>
-                      <span className="w-20 text-right font-medium">{d.tempMax}° / {d.tempMin}°</span>
+                    <div key={i} className={`flex items-center justify-between px-4 py-3.5 text-sm ${th.cardHover} transition-colors`}>
+                      <span className={`w-20 shrink-0 font-medium ${i === 0 ? th.accent : th.textPrimary}`}>
+                        {i === 0 ? t("wxToday", lang) : formatDay(d.dt)}
+                      </span>
+                      <div className="flex items-center gap-2 flex-1 justify-center">
+                        <m.iconName size={19} className={m.colorClass} />
+                        {d.pop > 0.15 && (
+                          <span className={`text-xs ${th.accent2}`}>{Math.round(d.pop * 100)}%</span>
+                        )}
+                      </div>
+                      <span className="w-24 text-right font-semibold font-mono">
+                        <span className={th.textPrimary}>{d.tempMax}°</span>
+                        <span className={`mx-1 ${th.textMuted}`}>/</span>
+                        <span className={th.textMuted}>{d.tempMin}°</span>
+                      </span>
                     </div>
                   );
                 })}
               </div>
-            </div>
+            </section>
           </>
         )}
       </div>
