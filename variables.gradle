@@ -1,0 +1,14 @@
+// android/app/variables.gradle (yukarıdaki gibi)
+ext {
+    // minSdkVersion 24 (Android 7.0) → 26 (Android 8.0) olarak yükseltildi.
+    // Android 8.0+: bildirim kanalı (createChannel) desteği garantili,
+    // ezan sesi özel bildirim sesi kesin çalışır.
+    // Android 7.x payı zaten <%1 — pratikte sıfır kullanıcı kaybı.
+    minSdkVersion    = 24
+    compileSdkVersion= 36
+    targetSdkVersion = 36
+
+    // Google Play'in istediği o sihirli sürüm artışları tam olarak burası:
+    versionCode = 2
+    versionName = "2.2.0"
+}

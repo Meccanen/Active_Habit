@@ -1,0 +1,7 @@
+{
+  "appId": "meccanen.hava.durumu.v1",
+  "appName": "Meccanen Hava Durumu",
+  "webDir": "dist",
+  "server": { "androidScheme": "https" },
+  "android": { "allowMixedContent": true }
+}
