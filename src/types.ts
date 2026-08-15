@@ -12,24 +12,19 @@ export interface CurrentWeather {
   apparentTemperature: number;
   humidity: number;
   windSpeed: number;
-  windDeg: number;
   pressure: number;
-  uvIndex: number;
-  visibility: number;
-  weatherId: number;
-  weatherMain: string;
-  weatherDesc: string;
+  weatherCode: number; // WMO kodu
   isDay: boolean;
   sunrise: number; // unix ts
   sunset: number;  // unix ts
+  popToday: number; // bugünkü maksimum yağış olasılığı (0-100)
 }
 
 export interface HourlyForecast {
   dt: number; // unix ts
   temperature: number;
   feelsLike: number;
-  weatherId: number;
-  weatherDesc: string;
+  weatherCode: number;
   pop: number; // yağış olasılığı (0-1)
   isDay: boolean;
 }
@@ -38,11 +33,8 @@ export interface DailyForecast {
   dt: number; // unix ts (öğlen referans saati)
   tempMin: number;
   tempMax: number;
-  weatherId: number;
-  weatherDesc: string;
-  pop: number;
-  humidity: number;
-  windSpeed: number;
+  weatherCode: number;
+  pop: number; // yağış olasılığı (0-1)
 }
 
 export interface WeatherBundle {

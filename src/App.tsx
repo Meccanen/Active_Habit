@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from "react";
 import { motion } from "motion/react";
 import {
   MapPin, Search, X, Settings, Palette, Check, Plus, Trash2,
-  Coffee, Navigation, RefreshCw, Droplets, Wind, Eye, Gauge, Sunrise, Sunset,
+  Coffee, Navigation, RefreshCw, Droplets, Wind, Umbrella, Gauge, Sunrise, Sunset,
   ChevronsDown, CloudSun,
 } from "lucide-react";
 import { Location } from "./types";
@@ -635,7 +635,7 @@ export default function App() {
 
   // ---- Türetilmiş görünüm verisi ----
   const currentMapping = useMemo(
-    () => weather ? getWeatherMapping(weather.current.weatherId, weather.current.isDay) : null,
+    () => weather ? getWeatherMapping(weather.current.weatherCode, weather.current.isDay) : null,
     [weather]
   );
 
@@ -780,9 +780,9 @@ export default function App() {
                     <span className={th.textMuted}>{t("wxPressure", lang)}</span>
                   </div>
                   <div className="flex flex-col items-center gap-1.5">
-                    <Eye size={16} className={th.accent2} />
-                    <span className={`font-semibold ${th.textPrimary}`}>{Math.round(weather.current.visibility / 1000)} km</span>
-                    <span className={th.textMuted}>{t("wxVisibility", lang)}</span>
+                    <Umbrella size={16} className={th.accent2} />
+                    <span className={`font-semibold ${th.textPrimary}`}>{Math.round(weather.current.popToday)}%</span>
+                    <span className={th.textMuted}>{t("wxPop", lang)}</span>
                   </div>
                 </div>
 
@@ -798,7 +798,7 @@ export default function App() {
               <p className={`text-xs font-bold uppercase tracking-wide mb-2.5 px-1 ${th.textMuted}`}>{t("wxHourlyTitle", lang)}</p>
               <div className="flex gap-2.5 overflow-x-auto scrollbar-hide pb-1 -mx-1 px-1">
                 {weather.hourly.map((h, i) => {
-                  const m = getWeatherMapping(h.weatherId, h.isDay);
+                  const m = getWeatherMapping(h.weatherCode, h.isDay);
                   return (
                     <motion.div key={i}
                       initial={{ opacity: 0, y: 10 }}
@@ -824,7 +824,7 @@ export default function App() {
               <p className={`text-xs font-bold uppercase tracking-wide px-4 pt-4 pb-1 ${th.textMuted}`}>{t("wxDailyTitle", lang)}</p>
               <div className={`divide-y ${isLight(themeKey) ? "divide-black/5" : "divide-white/5"}`}>
                 {weather.daily.map((d, i) => {
-                  const m = getWeatherMapping(d.weatherId, true);
+                  const m = getWeatherMapping(d.weatherCode, true);
                   return (
                     <div key={i} className={`flex items-center justify-between px-4 py-3.5 text-sm ${th.cardHover} transition-colors`}>
                       <span className={`w-20 shrink-0 font-medium ${i === 0 ? th.accent : th.textPrimary}`}>

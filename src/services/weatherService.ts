@@ -1,51 +1,55 @@
 import { CurrentWeather, DailyForecast, HourlyForecast, WeatherBundle } from "../types";
 
 /**
- * OpenWeather API anahtarı build zamanında GitHub Actions secret'ından
- * .env dosyasına yazılır (VITE_OPENWEATHER_API_KEY). Yerelde geliştirirken
- * proje kökünde bir .env dosyası oluşturup aynı değişkeni tanımlaman yeterli
- * — bu dosya .gitignore'da olmalı, asla repoya commit edilmemeli.
+ * Open-Meteo — key gerektirmeyen, ücretsiz (ticari olmayan kullanım için)
+ * hava durumu servisi. Namaz vaktindeki geocoding ile aynı sağlayıcı ailesi.
+ * Şartlar: https://open-meteo.com/en/terms (10.000 çağrı/gün, 5.000/saat,
+ * 600/dakika). Uygulama ölçek büyüdükçe kendi sunucun üzerinden bir
+ * cache proxy'ye geçmek gerekebilir — bkz. proje notları.
  */
-const API_KEY = import.meta.env.VITE_OPENWEATHER_API_KEY as string | undefined;
+const FORECAST_URL = "https://api.open-meteo.com/v1/forecast";
 
-const ONE_CALL_URL = "https://api.openweathermap.org/data/3.0/onecall";
-
-/** Saatlik veriden kaç saatlik pencere gösterileceği (OpenWeather 48 saate kadar veriyor). */
 const HOURLY_WINDOW = 48;
 
 export class WeatherServiceError extends Error {
-  constructor(message: string, public readonly code: "NO_API_KEY" | "NETWORK" | "API_ERROR") {
+  constructor(message: string, public readonly code: "NETWORK" | "API_ERROR") {
     super(message);
   }
 }
 
-function isDaytime(dt: number, sunrise: number, sunset: number): boolean {
-  return dt >= sunrise && dt < sunset;
+function toUnix(isoLocal: string): number {
+  // Open-Meteo "timezone=auto" ile yerel saat döndürüyor (ör. "2026-08-16T14:00"),
+  // bunu UTC gibi parse edip Date.now() ile aynı referansta unix ts'e çeviriyoruz.
+  return Math.floor(new Date(isoLocal).getTime() / 1000);
 }
 
 export async function fetchWeatherBundle(
   latitude: number,
   longitude: number,
-  lang: string = "tr"
+  _lang: string = "tr"
 ): Promise<WeatherBundle> {
-  if (!API_KEY) {
-    throw new WeatherServiceError(
-      "OpenWeather API anahtarı tanımlı değil (VITE_OPENWEATHER_API_KEY).",
-      "NO_API_KEY"
-    );
-  }
-
-  // OpenWeather bazı dillerimizi (ur) doğrudan desteklemiyor olabilir, en yakın karşılığa düş.
-  const owLang = lang === "ur" ? "en" : lang;
-
-  const url =
-    `${ONE_CALL_URL}?lat=${latitude}&lon=${longitude}` +
-    `&exclude=minutely,alerts` +
-    `&units=metric&lang=${owLang}&appid=${API_KEY}`;
+  const params = new URLSearchParams({
+    latitude: String(latitude),
+    longitude: String(longitude),
+    current: [
+      "temperature_2m", "relative_humidity_2m", "apparent_temperature",
+      "is_day", "weather_code", "wind_speed_10m", "surface_pressure",
+    ].join(","),
+    hourly: [
+      "temperature_2m", "apparent_temperature", "precipitation_probability",
+      "weather_code", "is_day",
+    ].join(","),
+    daily: [
+      "weather_code", "temperature_2m_max", "temperature_2m_min",
+      "precipitation_probability_max", "sunrise", "sunset",
+    ].join(","),
+    timezone: "auto",
+    forecast_days: "8",
+  });
 
   let res: Response;
   try {
-    res = await fetch(url);
+    res = await fetch(`${FORECAST_URL}?${params.toString()}`);
   } catch {
     throw new WeatherServiceError("Hava durumu servisine ulaşılamadı.", "NETWORK");
   }
@@ -59,52 +63,49 @@ export async function fetchWeatherBundle(
 
   const data = await res.json();
 
-  const sunrise: number = data.current.sunrise;
-  const sunset: number = data.current.sunset;
+  const sunriseToday = toUnix(data.daily.sunrise[0]);
+  const sunsetToday = toUnix(data.daily.sunset[0]);
 
   const current: CurrentWeather = {
-    temperature: Math.round(data.current.temp),
-    apparentTemperature: Math.round(data.current.feels_like),
-    humidity: data.current.humidity,
-    windSpeed: data.current.wind_speed,
-    windDeg: data.current.wind_deg,
-    pressure: data.current.pressure,
-    uvIndex: data.current.uvi,
-    visibility: data.current.visibility,
-    weatherId: data.current.weather?.[0]?.id ?? 800,
-    weatherMain: data.current.weather?.[0]?.main ?? "",
-    weatherDesc: data.current.weather?.[0]?.description ?? "",
-    isDay: isDaytime(data.current.dt, sunrise, sunset),
-    sunrise,
-    sunset,
+    temperature: Math.round(data.current.temperature_2m),
+    apparentTemperature: Math.round(data.current.apparent_temperature),
+    humidity: data.current.relative_humidity_2m,
+    windSpeed: data.current.wind_speed_10m,
+    pressure: Math.round(data.current.surface_pressure),
+    weatherCode: data.current.weather_code,
+    isDay: data.current.is_day === 1,
+    sunrise: sunriseToday,
+    sunset: sunsetToday,
+    popToday: data.daily.precipitation_probability_max?.[0] ?? 0,
   };
 
-  const hourly: HourlyForecast[] = (data.hourly ?? [])
-    .slice(0, HOURLY_WINDOW)
-    .map((h: any) => ({
-      dt: h.dt,
-      temperature: Math.round(h.temp),
-      feelsLike: Math.round(h.feels_like),
-      weatherId: h.weather?.[0]?.id ?? 800,
-      weatherDesc: h.weather?.[0]?.description ?? "",
-      pop: h.pop ?? 0,
-      // Saatlik kayıtlarda kendi gün doğumu/batımı yok — o günün current sunrise/sunset'iyle
-      // yaklaşık hesaplanıyor (48 saatlik pencerede en fazla 1 gün sınırı geçilir, kabul edilebilir sapma).
-      isDay: isDaytime(h.dt, sunrise, sunset),
-    }));
+  const nowTs = Date.now() / 1000;
+  const hourlyTimes: string[] = data.hourly.time;
+  let startIdx = hourlyTimes.findIndex((iso) => toUnix(iso) >= nowTs);
+  if (startIdx === -1) startIdx = 0;
 
-  const daily: DailyForecast[] = (data.daily ?? [])
-    .slice(0, 7)
-    .map((d: any) => ({
-      dt: d.dt,
-      tempMin: Math.round(d.temp.min),
-      tempMax: Math.round(d.temp.max),
-      weatherId: d.weather?.[0]?.id ?? 800,
-      weatherDesc: d.weather?.[0]?.description ?? "",
-      pop: d.pop ?? 0,
-      humidity: d.humidity,
-      windSpeed: d.wind_speed,
-    }));
+  const hourly: HourlyForecast[] = hourlyTimes
+    .slice(startIdx, startIdx + HOURLY_WINDOW)
+    .map((iso, i) => {
+      const idx = startIdx + i;
+      return {
+        dt: toUnix(iso),
+        temperature: Math.round(data.hourly.temperature_2m[idx]),
+        feelsLike: Math.round(data.hourly.apparent_temperature[idx]),
+        weatherCode: data.hourly.weather_code[idx],
+        pop: (data.hourly.precipitation_probability[idx] ?? 0) / 100,
+        isDay: data.hourly.is_day[idx] === 1,
+      };
+    });
+
+  const dailyTimes: string[] = data.daily.time;
+  const daily: DailyForecast[] = dailyTimes.slice(0, 7).map((iso, idx) => ({
+    dt: toUnix(iso) + 12 * 3600, // öğlen referansı (görüntüleme için)
+    tempMin: Math.round(data.daily.temperature_2m_min[idx]),
+    tempMax: Math.round(data.daily.temperature_2m_max[idx]),
+    weatherCode: data.daily.weather_code[idx],
+    pop: (data.daily.precipitation_probability_max?.[idx] ?? 0) / 100,
+  }));
 
   return { current, hourly, daily, fetchedAt: Date.now() };
 }
