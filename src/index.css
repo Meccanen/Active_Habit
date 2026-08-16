@@ -19,6 +19,13 @@ body {
   padding-right: env(safe-area-inset-right, 0px);
 }
 
+/* Erişilebilirlik: font ölçeği (Tailwind rem tabanlı olduğu için tüm
+   text-*, boyut ve boşluk sınıflarını orantılı şekilde büyütür).
+   Varsayılan "large" — ayarlar panelinden değiştirilebilir. */
+html.font-scale-normal { font-size: 100%; }
+html.font-scale-large { font-size: 118%; }
+html.font-scale-xlarge { font-size: 134%; }
+
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.3); border-radius: 2px; }

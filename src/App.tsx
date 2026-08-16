@@ -6,6 +6,7 @@ import {
   ChevronsDown, CloudSun,
 } from "lucide-react";
 import { Location } from "./types";
+export type FontScale = "normal" | "large" | "xlarge";
 import { TURKEY_PROVINCES, PAKISTAN_CITIES } from "./utils/cityData";
 import { getWeatherMapping } from "./utils/weatherHelper";
 import { fetchWeatherBundle, WeatherServiceError } from "./services/weatherService";
@@ -239,6 +240,7 @@ function SettingsPanel({
   initialTab,
   isSupporterUser, supporterLoading, purchasingId,
   onSupporterPurchase, onSupporterRestore,
+  fontScale, setFontScale,
 }: {
   theme: ThemeKey; setTheme: (k: ThemeKey) => void;
   location: Location; setLocation: (l: Location) => void;
@@ -251,6 +253,7 @@ function SettingsPanel({
   isSupporterUser: boolean; supporterLoading: boolean; purchasingId: string | null;
   onSupporterPurchase: (productId: SupporterProductId) => void;
   onSupporterRestore: () => void;
+  fontScale: FontScale; setFontScale: (f: FontScale) => void;
 }) {
   const [tab, setTab] = useState<"tema" | "konum" | "hakkinda">(initialTab || "tema");
   const [searchQuery, setSearchQuery] = useState("");
@@ -316,8 +319,8 @@ function SettingsPanel({
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm animate-fadeIn">
-      <div className={`w-full sm:max-w-lg sm:rounded-3xl rounded-t-3xl border ${th.settingsCard} max-h-[90vh] flex flex-col`}>
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-4 px-3 pb-3 sm:pt-8 sm:px-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+      <div className={`relative w-full max-w-lg rounded-[28px] border ${th.settingsCard} max-h-[92vh] flex flex-col`}>
         <div className={`flex items-center justify-between px-5 py-4 border-b ${th.header}`}>
           <h2 className={`font-semibold text-lg ${th.textPrimary}`}>{t("settings", lang)}</h2>
           <button onClick={onClose} className={`p-2 rounded-full ${th.cardHover} ${th.textSecondary}`}><X size={18}/></button>
@@ -338,7 +341,23 @@ function SettingsPanel({
           )}
 
           {tab === "tema" && (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-5">
+              <div className="space-y-2">
+                <p className={`text-xs uppercase tracking-wide ${th.textMuted}`}>{t("fontSize", lang)}</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {(["normal", "large", "xlarge"] as FontScale[]).map(fs => (
+                    <button key={fs} onClick={() => setFontScale(fs)}
+                      className={`py-2.5 rounded-xl border text-center transition ${th.card} ${th.cardHover} ${fontScale === fs ? th.accent + " ring-2 ring-offset-2 ring-offset-transparent " + th.accent : th.textMuted}`}>
+                      <span className={fs === "normal" ? "text-sm" : fs === "large" ? "text-base" : "text-lg"}>Aa</span>
+                      <div className="text-[11px] mt-1 font-medium">
+                        {fs === "normal" ? t("fontSizeNormal", lang) : fs === "large" ? t("fontSizeLarge", lang) : t("fontSizeXLarge", lang)}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
               {(Object.entries(THEMES) as [ThemeKey, typeof THEMES[ThemeKey]][]).map(([key, cardTh]) => (
                 <button key={key} onClick={() => setTheme(key)}
                   className={`relative rounded-2xl border p-3 text-left transition ${cardTh.card} ${cardTh.cardHover} ${theme === key ? "ring-2 ring-offset-2 ring-offset-transparent " + cardTh.accent : ""}`}>
@@ -351,6 +370,7 @@ function SettingsPanel({
                   {theme === key && <Check size={14} className={`absolute top-2 right-2 ${cardTh.accent}`} />}
                 </button>
               ))}
+              </div>
             </div>
           )}
 
@@ -478,6 +498,16 @@ export default function App() {
     () => (localStorage.getItem("mhd_lang") as LangCode) || detectLanguage()
   );
   const setLang = (l: LangCode) => { setLangState(l); localStorage.setItem("mhd_lang", l); };
+
+  const [fontScale, setFontScaleState] = useState<FontScale>(() => {
+    const saved = localStorage.getItem("mhd_font_scale") as FontScale | null;
+    return saved === "normal" || saved === "large" || saved === "xlarge" ? saved : "large";
+  });
+  const setFontScale = (f: FontScale) => { setFontScaleState(f); localStorage.setItem("mhd_font_scale", f); };
+  useEffect(() => {
+    document.documentElement.classList.remove("font-scale-normal", "font-scale-large", "font-scale-xlarge");
+    document.documentElement.classList.add(`font-scale-${fontScale}`);
+  }, [fontScale]);
 
   const [location, setLocationState] = useState<Location>(() => {
     try { const s = localStorage.getItem("mhd_location"); return s ? JSON.parse(s) : DEFAULT_LOCATION; }
@@ -881,6 +911,7 @@ export default function App() {
           initialTab={settingsTab}
           isSupporterUser={isSupporterUser} supporterLoading={supporterLoading} purchasingId={purchasingId}
           onSupporterPurchase={handleSupporterPurchase} onSupporterRestore={handleSupporterRestore}
+          fontScale={fontScale} setFontScale={setFontScale}
         />
       )}
     </div>
