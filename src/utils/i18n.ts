@@ -62,6 +62,10 @@ const en: Record<string, string> = {
   wxLoading: "Loading weather…",
   wxError: "Couldn't load weather data.",
   wxPop: "Chance of rain",
+  fontSize: "Text Size",
+  fontSizeNormal: "Normal",
+  fontSizeLarge: "Large",
+  fontSizeXLarge: "Extra Large",
 };
 
 const de: Record<string, string> = {
@@ -126,6 +130,10 @@ const de: Record<string, string> = {
   wxLoading: "Wetter wird geladen…",
   wxError: "Wetterdaten konnten nicht geladen werden.",
   wxPop: "Regenwahrscheinlichkeit",
+  fontSize: "Textgröße",
+  fontSizeNormal: "Normal",
+  fontSizeLarge: "Groß",
+  fontSizeXLarge: "Sehr groß",
 };
 
 const tr: Record<string, string> = {
@@ -190,6 +198,10 @@ const tr: Record<string, string> = {
   wxLoading: "Hava durumu yükleniyor…",
   wxError: "Hava durumu verisi alınamadı.",
   wxPop: "Yağış İhtimali",
+  fontSize: "Yazı Boyutu",
+  fontSizeNormal: "Normal",
+  fontSizeLarge: "Büyük",
+  fontSizeXLarge: "Çok Büyük",
 };
 
 const ar: Record<string, string> = {
@@ -254,6 +266,10 @@ const ar: Record<string, string> = {
   wxLoading: "جارٍ تحميل الطقس…",
   wxError: "تعذر تحميل بيانات الطقس.",
   wxPop: "احتمال هطول الأمطار",
+  fontSize: "حجم الخط",
+  fontSizeNormal: "عادي",
+  fontSizeLarge: "كبير",
+  fontSizeXLarge: "كبير جدًا",
 };
 
 const ur: Record<string, string> = {
@@ -318,6 +334,10 @@ const ur: Record<string, string> = {
   wxLoading: "موسم لوڈ ہو رہا ہے…",
   wxError: "موسم کا ڈیٹا لوڈ نہیں ہو سکا۔",
   wxPop: "بارش کا امکان",
+  fontSize: "متن کا سائز",
+  fontSizeNormal: "عام",
+  fontSizeLarge: "بڑا",
+  fontSizeXLarge: "بہت بڑا",
 };
 
 const LANG_MAP: Record<string, LangCode> = {
