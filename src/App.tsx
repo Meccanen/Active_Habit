@@ -240,7 +240,6 @@ function SettingsPanel({
   initialTab,
   isSupporterUser, supporterLoading, purchasingId,
   onSupporterPurchase, onSupporterRestore,
-  fontScale, setFontScale,
 }: {
   theme: ThemeKey; setTheme: (k: ThemeKey) => void;
   location: Location; setLocation: (l: Location) => void;
@@ -253,7 +252,6 @@ function SettingsPanel({
   isSupporterUser: boolean; supporterLoading: boolean; purchasingId: string | null;
   onSupporterPurchase: (productId: SupporterProductId) => void;
   onSupporterRestore: () => void;
-  fontScale: FontScale; setFontScale: (f: FontScale) => void;
 }) {
   const [tab, setTab] = useState<"tema" | "konum" | "hakkinda">(initialTab || "tema");
   const [searchQuery, setSearchQuery] = useState("");
@@ -342,21 +340,6 @@ function SettingsPanel({
 
           {tab === "tema" && (
             <div className="space-y-5">
-              <div className="space-y-2">
-                <p className={`text-xs uppercase tracking-wide ${th.textMuted}`}>{t("fontSize", lang)}</p>
-                <div className="grid grid-cols-3 gap-2">
-                  {(["normal", "large", "xlarge"] as FontScale[]).map(fs => (
-                    <button key={fs} onClick={() => setFontScale(fs)}
-                      className={`py-2.5 rounded-xl border text-center transition ${th.card} ${th.cardHover} ${fontScale === fs ? th.accent + " ring-2 ring-offset-2 ring-offset-transparent " + th.accent : th.textMuted}`}>
-                      <span className={fs === "normal" ? "text-sm" : fs === "large" ? "text-base" : "text-lg"}>Aa</span>
-                      <div className="text-[11px] mt-1 font-medium">
-                        {fs === "normal" ? t("fontSizeNormal", lang) : fs === "large" ? t("fontSizeLarge", lang) : t("fontSizeXLarge", lang)}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
               <div className="grid grid-cols-2 gap-3">
               {(Object.entries(THEMES) as [ThemeKey, typeof THEMES[ThemeKey]][]).map(([key, cardTh]) => (
                 <button key={key} onClick={() => setTheme(key)}
@@ -669,11 +652,18 @@ export default function App() {
     [weather]
   );
 
-  const formatHour = (dt: number) => new Intl.DateTimeFormat("tr-TR", {
+  // Dile göre Intl locale kodu — gün/ay isimleri (formatDay) ve saat
+  // biçimi artık seçili dile göre değişiyor, sabit "tr-TR" değil.
+  const INTL_LOCALE: Record<LangCode, string> = {
+    tr: "tr-TR", en: "en-US", de: "de-DE", ar: "ar-SA", ur: "ur-PK",
+  };
+  const intlLocale = INTL_LOCALE[lang] || "en-US";
+
+  const formatHour = (dt: number) => new Intl.DateTimeFormat(intlLocale, {
     hour: "2-digit", minute: "2-digit", timeZone: location.timezone || "Europe/Istanbul",
   }).format(new Date(dt * 1000));
 
-  const formatDay = (dt: number) => new Intl.DateTimeFormat("tr-TR", {
+  const formatDay = (dt: number) => new Intl.DateTimeFormat(intlLocale, {
     weekday: "short", day: "numeric", month: "short", timeZone: location.timezone || "Europe/Istanbul",
   }).format(new Date(dt * 1000));
 
@@ -731,6 +721,15 @@ export default function App() {
             </div>
             <div className="flex items-center gap-2">
               <button onClick={() => {
+                  const order: FontScale[] = ["normal", "large", "xlarge"];
+                  const next = order[(order.indexOf(fontScale) + 1) % order.length];
+                  setFontScale(next);
+                }}
+                title={t("fontSize", lang)}
+                className={`px-3.5 py-1.5 text-sm font-extrabold border rounded-full transition-all cursor-pointer ${hdrBtnBg} ${hdrBtnText}`}>
+                Aa
+              </button>
+              <button onClick={() => {
                   const order: LangCode[] = ["tr", "en", "ar", "de", "ur"];
                   const next = order[(order.indexOf(lang) + 1) % order.length];
                   setLang(next);
@@ -786,7 +785,7 @@ export default function App() {
                   </span>
                   <span className={`text-2xl sm:text-3xl font-light ${th.secColor} mt-1`}>°</span>
                 </div>
-                <p className={`text-sm sm:text-base font-medium ${th.textSecondary} mt-1 capitalize`}>{currentMapping.desc}</p>
+                <p className={`text-sm sm:text-base font-medium ${th.textSecondary} mt-1 capitalize`}>{t(currentMapping.descKey, lang)}</p>
 
                 <div className={`mt-5 w-full p-4 rounded-2xl border-2 ${th.prayerActive} flex items-center justify-center gap-2 shadow-lg`}>
                   <span className="text-sm font-semibold uppercase tracking-wide opacity-80">{t("wxFeelsLike", lang)}</span>
@@ -911,7 +910,6 @@ export default function App() {
           initialTab={settingsTab}
           isSupporterUser={isSupporterUser} supporterLoading={supporterLoading} purchasingId={purchasingId}
           onSupporterPurchase={handleSupporterPurchase} onSupporterRestore={handleSupporterRestore}
-          fontScale={fontScale} setFontScale={setFontScale}
         />
       )}
     </div>
