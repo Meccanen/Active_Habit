@@ -678,16 +678,20 @@ export default function App() {
 
       <div className="w-full max-w-2xl mx-auto flex flex-col gap-4 sm:gap-5 relative z-10 animate-fadeIn">
 
-        {/* Header — namaz vaktindeki marka/pill deseniyle */}
-        <header className="flex flex-col gap-2 pb-2">
-          <div className="flex flex-wrap justify-between items-center gap-y-2 gap-x-2">
+        {/* Header — kontroller bilinçli olarak SABİT boyutta (px), font
+            ölçeğinden (fontScale) etkilenmiyor. Böylece "Büyük/Çok Büyük"
+            yazı tercihi asıl içeriği (sıcaklık, tahmin, açıklama metni)
+            büyütür ama üst menü her zaman düzenli/tek satır kalır — RTL
+            dillerde de aynı şekilde stabil. */}
+        <header className="flex flex-col gap-[8px] pb-[8px]">
+          <div className="flex justify-between items-center gap-[8px]">
             <button onClick={() => { setSettingsTab("hakkinda"); setShowSettings(true); }}
               className="cursor-pointer select-none hover:opacity-75 transition-opacity duration-200 text-left shrink-0">
-              <div className={`text-2xl sm:text-3xl font-extrabold tracking-widest ${th.accent} leading-none`}>
+              <div className={`text-[24px] font-extrabold tracking-widest ${th.accent} leading-none`}>
                 MECCANEN
               </div>
             </button>
-            <div className="flex flex-wrap items-center justify-end gap-2">
+            <div className="flex items-center gap-[8px] min-w-0">
               {savedLocations.length > 1 ? (
                 <button onClick={() => {
                     const idx = savedLocations.findIndex(l =>
@@ -697,34 +701,34 @@ export default function App() {
                     const next = savedLocations[(idx + 1) % savedLocations.length];
                     setLocationAndSave(next);
                   }}
-                  className={`inline-flex items-center gap-1.5 px-4 py-2 border rounded-full text-sm font-bold ${th.accent} ${hdrBtnBg} transition-all cursor-pointer max-w-[55vw] sm:max-w-none`}>
-                  <MapPin className="w-4 h-4 shrink-0" /><span className="truncate">{location.name}</span><ChevronsDown className="w-3.5 h-3.5 -rotate-90 shrink-0" />
+                  className={`inline-flex items-center gap-[6px] px-[16px] py-[8px] border rounded-full text-[14px] font-bold ${th.accent} ${hdrBtnBg} transition-all cursor-pointer min-w-0 max-w-[42vw]`}>
+                  <MapPin size={16} className="shrink-0" /><span className="truncate">{location.name}</span><ChevronsDown size={14} className="-rotate-90 shrink-0" />
                 </button>
               ) : (
                 <button onClick={() => { setSettingsTab("konum"); setShowSettings(true); }}
-                  className={`inline-flex items-center gap-1.5 px-4 py-2 border rounded-full text-sm font-bold ${th.accent} ${hdrBtnBg} max-w-[55vw] sm:max-w-none`}>
-                  <MapPin className="w-4 h-4 shrink-0" /><span className="truncate">{location.name}</span>
+                  className={`inline-flex items-center gap-[6px] px-[16px] py-[8px] border rounded-full text-[14px] font-bold ${th.accent} ${hdrBtnBg} min-w-0 max-w-[42vw]`}>
+                  <MapPin size={16} className="shrink-0" /><span className="truncate">{location.name}</span>
                 </button>
               )}
               <button onClick={() => { setSettingsTab("tema"); setShowSettings(true); }}
-                className={`p-2.5 border rounded-full transition-all cursor-pointer shrink-0 ${hdrBtnBg} ${hdrBtnText}`}>
-                <Settings className="w-5 h-5" />
+                className={`p-[10px] border rounded-full transition-all cursor-pointer shrink-0 ${hdrBtnBg} ${hdrBtnText}`}>
+                <Settings size={20} />
               </button>
             </div>
           </div>
 
-          <div className="flex flex-wrap justify-between items-center gap-y-2 gap-x-2">
-            <div className="flex items-center gap-2">
-              <span className={`text-sm sm:text-base font-semibold ${th.textSecondary}`}>{t("appName", lang)}</span>
+          <div className="flex justify-between items-center gap-[8px]">
+            <div className="flex items-center gap-[8px] min-w-0">
+              <span className={`text-[14px] font-semibold truncate ${th.textSecondary}`}>{t("appName", lang)}</span>
             </div>
-            <div className="flex flex-wrap items-center justify-end gap-2">
+            <div className="flex items-center gap-[8px] shrink-0">
               <button onClick={() => {
                   const order: FontScale[] = ["normal", "large", "xlarge"];
                   const next = order[(order.indexOf(fontScale) + 1) % order.length];
                   setFontScale(next);
                 }}
                 title={t("fontSize", lang)}
-                className={`px-3.5 py-1.5 text-sm font-extrabold border rounded-full transition-all cursor-pointer ${hdrBtnBg} ${hdrBtnText}`}>
+                className={`w-[38px] h-[38px] flex items-center justify-center text-[14px] font-extrabold border rounded-full transition-all cursor-pointer ${hdrBtnBg} ${hdrBtnText}`}>
                 Aa
               </button>
               <button onClick={() => {
@@ -732,12 +736,12 @@ export default function App() {
                   const next = order[(order.indexOf(lang) + 1) % order.length];
                   setLang(next);
                 }}
-                className={`px-4 py-1.5 text-sm font-bold border rounded-full transition-all cursor-pointer ${hdrBtnBg} ${hdrBtnText}`}>
+                className={`px-[14px] h-[38px] flex items-center justify-center text-[14px] font-bold border rounded-full transition-all cursor-pointer ${hdrBtnBg} ${hdrBtnText}`}>
                 {lang.toUpperCase()}
               </button>
               <button onClick={loadWeather} disabled={weatherLoading}
-                className={`p-2 border rounded-full transition-all cursor-pointer ${hdrBtnBg} ${hdrBtnText}`}>
-                <RefreshCw className={`w-3.5 h-3.5 ${weatherLoading ? "animate-spin" : ""}`} />
+                className={`w-[38px] h-[38px] flex items-center justify-center border rounded-full transition-all cursor-pointer ${hdrBtnBg} ${hdrBtnText}`}>
+                <RefreshCw size={15} className={weatherLoading ? "animate-spin" : ""} />
               </button>
             </div>
           </div>
