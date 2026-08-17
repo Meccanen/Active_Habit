@@ -397,16 +397,31 @@ function SettingsPanel({
                 ))}
               </div>
 
-              <div className="space-y-1 pt-2">
-                <p className={`text-xs uppercase tracking-wide ${th.textMuted}`}>Türkiye</p>
-                <select onChange={e => {
-                  const p = TURKEY_PROVINCES.find(x => x.name === e.target.value);
-                  if (p) addAndSelectCity({ name: p.name, country: "Türkiye", latitude: p.latitude, longitude: p.longitude, timezone: "Europe/Istanbul", admin1: "Türkiye" });
-                }} className={`w-full px-3 py-2 rounded-xl border bg-transparent text-sm ${th.card} ${th.textPrimary}`}>
-                  <option value="">İl seçin…</option>
-                  {TURKEY_PROVINCES.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
-                </select>
-              </div>
+              {lang === "tr" && (
+                <div className="space-y-1 pt-2">
+                  <p className={`text-xs uppercase tracking-wide ${th.textMuted}`}>{t("turkeyProvinces", lang)}</p>
+                  <select onChange={e => {
+                    const p = TURKEY_PROVINCES.find(x => x.name === e.target.value);
+                    if (p) addAndSelectCity({ name: p.name, country: "Türkiye", latitude: p.latitude, longitude: p.longitude, timezone: "Europe/Istanbul", admin1: "Türkiye" });
+                  }} className={`w-full px-3 py-2 rounded-xl border bg-transparent text-sm ${th.card} ${th.textPrimary}`}>
+                    <option value="">{t("select", lang)}</option>
+                    {TURKEY_PROVINCES.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
+                  </select>
+                </div>
+              )}
+
+              {lang === "ur" && (
+                <div className="space-y-1 pt-2" dir="rtl">
+                  <p className={`text-xs uppercase tracking-wide ${th.textMuted}`}>{t("pakistanCities", lang)}</p>
+                  <select onChange={e => {
+                    const p = PAKISTAN_CITIES.find(x => x.id === Number(e.target.value));
+                    if (p) addAndSelectCity({ name: p.name, country: "Pakistan", latitude: p.latitude, longitude: p.longitude, timezone: "Asia/Karachi", admin1: "Pakistan" });
+                  }} className={`w-full px-3 py-2 rounded-xl border bg-transparent text-sm ${th.card} ${th.textPrimary}`} dir="rtl">
+                    <option value="">{t("select", lang)}</option>
+                    {PAKISTAN_CITIES.map(p => <option key={p.id} value={p.id}>{p.urdu}</option>)}
+                  </select>
+                </div>
+              )}
             </div>
           )}
 
