@@ -248,12 +248,12 @@ function SettingsPanel({
   lang: LangCode; setLang: (l: LangCode) => void;
   onFindLocation: () => void; isDetectingLocation: boolean;
   autoLocationEnabled: boolean; onToggleAutoLocation: (val: boolean) => void;
-  initialTab?: "tema" | "konum" | "hakkinda";
+  initialTab?: "tema" | "konum" | "dil" | "hakkinda";
   isSupporterUser: boolean; supporterLoading: boolean; purchasingId: string | null;
   onSupporterPurchase: (productId: SupporterProductId) => void;
   onSupporterRestore: () => void;
 }) {
-  const [tab, setTab] = useState<"tema" | "konum" | "hakkinda">(initialTab || "tema");
+  const [tab, setTab] = useState<"tema" | "konum" | "dil" | "hakkinda">(initialTab || "tema");
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Location[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -325,10 +325,10 @@ function SettingsPanel({
         </div>
 
         <div className={`flex border-b ${th.header} px-2`}>
-          {(["tema","konum","hakkinda"] as const).map(tb => (
+          {(["tema","konum","dil","hakkinda"] as const).map(tb => (
             <button key={tb} onClick={() => setTab(tb)}
               className={`flex-1 py-3 text-sm font-medium transition ${tab === tb ? th.accent : th.textMuted}`}>
-              {tb === "tema" ? t("themeTab", lang) : tb === "konum" ? t("location", lang) : t("about", lang)}
+              {tb === "tema" ? t("themeTab", lang) : tb === "konum" ? t("location", lang) : tb === "dil" ? t("language", lang) : t("about", lang)}
             </button>
           ))}
         </div>
@@ -410,6 +410,20 @@ function SettingsPanel({
             </div>
           )}
 
+          {tab === "dil" && (
+            <div className="space-y-2">
+              <p className={`text-xs uppercase tracking-wide ${th.textMuted}`}>{t("language", lang)}</p>
+              <div className="grid grid-cols-2 gap-2">
+                {LANGUAGES.map(l => (
+                  <button key={l.code} onClick={() => setLang(l.code)}
+                    className={`px-4 py-3 rounded-xl text-sm font-semibold border transition ${th.card} ${th.cardHover} ${lang === l.code ? th.accent + " ring-2 ring-offset-2 ring-offset-transparent " + th.accent : th.textMuted}`}>
+                    {l.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {tab === "hakkinda" && (
             <div className="space-y-5">
               <div className="text-center space-y-1">
@@ -443,18 +457,6 @@ function SettingsPanel({
                 <button onClick={onSupporterRestore} className={`w-full text-xs underline ${th.textMuted}`}>
                   {t("supporterRestore", lang)}
                 </button>
-              </div>
-
-              <div className="space-y-1">
-                <p className={`text-xs uppercase tracking-wide ${th.textMuted}`}>{t("themeTab", lang)}</p>
-                <div className="flex flex-wrap gap-2">
-                  {LANGUAGES.map(l => (
-                    <button key={l.code} onClick={() => setLang(l.code)}
-                      className={`px-3 py-1.5 rounded-full text-xs border ${th.card} ${lang === l.code ? th.accent : th.textMuted}`}>
-                      {l.label}
-                    </button>
-                  ))}
-                </div>
               </div>
             </div>
           )}
@@ -505,7 +507,7 @@ export default function App() {
   const setSavedLocations = (locs: Location[]) => { setSavedLocationsState(locs); localStorage.setItem("mhd_saved_locations", JSON.stringify(locs)); };
 
   const [showSettings, setShowSettings] = useState(false);
-  const [settingsTab, setSettingsTab] = useState<"tema"|"konum"|"hakkinda">("tema");
+  const [settingsTab, setSettingsTab] = useState<"tema"|"konum"|"dil"|"hakkinda">("tema");
 
   const [autoLocationEnabled, setAutoLocationEnabled] = useState(
     () => localStorage.getItem("mhd_auto_location") === "true"
@@ -687,11 +689,11 @@ export default function App() {
           <div className="flex justify-between items-center gap-[8px]">
             <button onClick={() => { setSettingsTab("hakkinda"); setShowSettings(true); }}
               className="cursor-pointer select-none hover:opacity-75 transition-opacity duration-200 text-left shrink-0">
-              <div className={`text-[24px] font-extrabold tracking-widest ${th.accent} leading-none`}>
+              <div className={`text-[28px] font-extrabold tracking-widest ${th.accent} leading-none`}>
                 MECCANEN
               </div>
             </button>
-            <div className="flex items-center gap-[8px] min-w-0">
+            <div className="flex items-center gap-[10px] min-w-0">
               {savedLocations.length > 1 ? (
                 <button onClick={() => {
                     const idx = savedLocations.findIndex(l =>
@@ -701,34 +703,34 @@ export default function App() {
                     const next = savedLocations[(idx + 1) % savedLocations.length];
                     setLocationAndSave(next);
                   }}
-                  className={`inline-flex items-center gap-[6px] px-[16px] py-[8px] border rounded-full text-[14px] font-bold ${th.accent} ${hdrBtnBg} transition-all cursor-pointer min-w-0 max-w-[42vw]`}>
-                  <MapPin size={16} className="shrink-0" /><span className="truncate">{location.name}</span><ChevronsDown size={14} className="-rotate-90 shrink-0" />
+                  className={`inline-flex items-center gap-[8px] h-[48px] px-[18px] border rounded-full text-[16px] font-bold ${th.accent} ${hdrBtnBg} transition-all cursor-pointer min-w-0 max-w-[42vw]`}>
+                  <MapPin size={20} className="shrink-0" /><span className="truncate">{location.name}</span><ChevronsDown size={16} className="-rotate-90 shrink-0" />
                 </button>
               ) : (
                 <button onClick={() => { setSettingsTab("konum"); setShowSettings(true); }}
-                  className={`inline-flex items-center gap-[6px] px-[16px] py-[8px] border rounded-full text-[14px] font-bold ${th.accent} ${hdrBtnBg} min-w-0 max-w-[42vw]`}>
-                  <MapPin size={16} className="shrink-0" /><span className="truncate">{location.name}</span>
+                  className={`inline-flex items-center gap-[8px] h-[48px] px-[18px] border rounded-full text-[16px] font-bold ${th.accent} ${hdrBtnBg} min-w-0 max-w-[42vw]`}>
+                  <MapPin size={20} className="shrink-0" /><span className="truncate">{location.name}</span>
                 </button>
               )}
               <button onClick={() => { setSettingsTab("tema"); setShowSettings(true); }}
-                className={`p-[10px] border rounded-full transition-all cursor-pointer shrink-0 ${hdrBtnBg} ${hdrBtnText}`}>
-                <Settings size={20} />
+                className={`w-[48px] h-[48px] flex items-center justify-center border rounded-full transition-all cursor-pointer shrink-0 ${hdrBtnBg} ${hdrBtnText}`}>
+                <Settings size={24} />
               </button>
             </div>
           </div>
 
           <div className="flex justify-between items-center gap-[8px]">
             <div className="flex items-center gap-[8px] min-w-0">
-              <span className={`text-[14px] font-semibold truncate ${th.textSecondary}`}>{t("appName", lang)}</span>
+              <span className={`text-[15px] font-semibold truncate ${th.textSecondary}`}>{t("appName", lang)}</span>
             </div>
-            <div className="flex items-center gap-[8px] shrink-0">
+            <div className="flex items-center gap-[10px] shrink-0">
               <button onClick={() => {
                   const order: FontScale[] = ["normal", "large", "xlarge"];
                   const next = order[(order.indexOf(fontScale) + 1) % order.length];
                   setFontScale(next);
                 }}
                 title={t("fontSize", lang)}
-                className={`w-[38px] h-[38px] flex items-center justify-center text-[14px] font-extrabold border rounded-full transition-all cursor-pointer ${hdrBtnBg} ${hdrBtnText}`}>
+                className={`w-[48px] h-[48px] flex items-center justify-center text-[17px] font-extrabold border rounded-full transition-all cursor-pointer ${hdrBtnBg} ${hdrBtnText}`}>
                 Aa
               </button>
               <button onClick={() => {
@@ -736,12 +738,12 @@ export default function App() {
                   const next = order[(order.indexOf(lang) + 1) % order.length];
                   setLang(next);
                 }}
-                className={`px-[14px] h-[38px] flex items-center justify-center text-[14px] font-bold border rounded-full transition-all cursor-pointer ${hdrBtnBg} ${hdrBtnText}`}>
+                className={`px-[18px] h-[48px] flex items-center justify-center text-[16px] font-bold border rounded-full transition-all cursor-pointer ${hdrBtnBg} ${hdrBtnText}`}>
                 {lang.toUpperCase()}
               </button>
               <button onClick={loadWeather} disabled={weatherLoading}
-                className={`w-[38px] h-[38px] flex items-center justify-center border rounded-full transition-all cursor-pointer ${hdrBtnBg} ${hdrBtnText}`}>
-                <RefreshCw size={15} className={weatherLoading ? "animate-spin" : ""} />
+                className={`w-[48px] h-[48px] flex items-center justify-center border rounded-full transition-all cursor-pointer ${hdrBtnBg} ${hdrBtnText}`}>
+                <RefreshCw size={19} className={weatherLoading ? "animate-spin" : ""} />
               </button>
             </div>
           </div>
