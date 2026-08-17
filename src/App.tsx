@@ -414,7 +414,7 @@ function SettingsPanel({
             <div className="space-y-5">
               <div className="text-center space-y-1">
                 <h3 className={`font-semibold ${th.textPrimary}`}>{t("appName", lang)}</h3>
-                <p className={`text-xs ${th.textMuted}`}>v{APP_VERSION} · {t("adFree", lang)}</p>
+                <p className={`text-xs ${th.textMuted}`}>v{APP_VERSION}</p>
               </div>
 
               <div className={`rounded-2xl border p-4 space-y-3 ${th.card}`}>
@@ -680,14 +680,14 @@ export default function App() {
 
         {/* Header — namaz vaktindeki marka/pill deseniyle */}
         <header className="flex flex-col gap-2 pb-2">
-          <div className="flex justify-between items-center">
+          <div className="flex flex-wrap justify-between items-center gap-y-2 gap-x-2">
             <button onClick={() => { setSettingsTab("hakkinda"); setShowSettings(true); }}
-              className="cursor-pointer select-none hover:opacity-75 transition-opacity duration-200 text-left">
+              className="cursor-pointer select-none hover:opacity-75 transition-opacity duration-200 text-left shrink-0">
               <div className={`text-2xl sm:text-3xl font-extrabold tracking-widest ${th.accent} leading-none`}>
                 MECCANEN
               </div>
             </button>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center justify-end gap-2">
               {savedLocations.length > 1 ? (
                 <button onClick={() => {
                     const idx = savedLocations.findIndex(l =>
@@ -697,29 +697,27 @@ export default function App() {
                     const next = savedLocations[(idx + 1) % savedLocations.length];
                     setLocationAndSave(next);
                   }}
-                  className={`inline-flex items-center gap-1.5 px-4 py-2 border rounded-full text-sm font-bold ${th.accent} ${hdrBtnBg} transition-all cursor-pointer`}>
-                  <MapPin className="w-4 h-4" />{location.name}<ChevronsDown className="w-3.5 h-3.5 -rotate-90" />
+                  className={`inline-flex items-center gap-1.5 px-4 py-2 border rounded-full text-sm font-bold ${th.accent} ${hdrBtnBg} transition-all cursor-pointer max-w-[55vw] sm:max-w-none`}>
+                  <MapPin className="w-4 h-4 shrink-0" /><span className="truncate">{location.name}</span><ChevronsDown className="w-3.5 h-3.5 -rotate-90 shrink-0" />
                 </button>
               ) : (
                 <button onClick={() => { setSettingsTab("konum"); setShowSettings(true); }}
-                  className={`inline-flex items-center gap-1.5 px-4 py-2 border rounded-full text-sm font-bold ${th.accent} ${hdrBtnBg}`}>
-                  <MapPin className="w-4 h-4" />{location.name}
+                  className={`inline-flex items-center gap-1.5 px-4 py-2 border rounded-full text-sm font-bold ${th.accent} ${hdrBtnBg} max-w-[55vw] sm:max-w-none`}>
+                  <MapPin className="w-4 h-4 shrink-0" /><span className="truncate">{location.name}</span>
                 </button>
               )}
               <button onClick={() => { setSettingsTab("tema"); setShowSettings(true); }}
-                className={`p-2.5 border rounded-full transition-all cursor-pointer ${hdrBtnBg} ${hdrBtnText}`}>
+                className={`p-2.5 border rounded-full transition-all cursor-pointer shrink-0 ${hdrBtnBg} ${hdrBtnText}`}>
                 <Settings className="w-5 h-5" />
               </button>
             </div>
           </div>
 
-          <div className="flex justify-between items-center">
+          <div className="flex flex-wrap justify-between items-center gap-y-2 gap-x-2">
             <div className="flex items-center gap-2">
               <span className={`text-sm sm:text-base font-semibold ${th.textSecondary}`}>{t("appName", lang)}</span>
-              <span className={isLight(themeKey) ? "text-slate-400" : "text-slate-600"}>·</span>
-              <span className={`text-sm sm:text-base font-bold ${th.accent}`}>{t("adFree", lang)}</span>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center justify-end gap-2">
               <button onClick={() => {
                   const order: FontScale[] = ["normal", "large", "xlarge"];
                   const next = order[(order.indexOf(fontScale) + 1) % order.length];
