@@ -1,0 +1,266 @@
+name: Build Android APK & AAB
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Kodu indir
+        uses: actions/checkout@v4
+      - name: Node.js kur
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Java kur
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      - name: Android SDK kur
+        uses: android-actions/setup-android@v3
+      - name: Bagımlılıkları yükle
+        run: npm install
+      - name: OpenWeather API anahtarını .env'e yaz
+        env:
+          OPENWEATHER_API_KEY: ${{ secrets.OPENWEATHER_API_KEY }}
+        run: |
+          if [ -z "$OPENWEATHER_API_KEY" ]; then
+            echo ">>> HATA: OPENWEATHER_API_KEY secret'ı tanımlı değil. Repo Settings > Secrets and variables > Actions altından ekle."
+            exit 1
+          fi
+          echo "VITE_OPENWEATHER_API_KEY=$OPENWEATHER_API_KEY" >> .env
+          echo ">>> .env dosyası oluşturuldu (key değeri loglanmadı)."
+      - name: AdMob banner ID'sini .env'e yaz
+        env:
+          ADMOB_BANNER_ID: ${{ secrets.ADMOB_BANNER_ID }}
+        run: |
+          if [ -z "$ADMOB_BANNER_ID" ]; then
+            echo ">>> HATA: ADMOB_BANNER_ID secret'ı tanımlı değil. Repo Settings > Secrets and variables > Actions altından ekle."
+            exit 1
+          fi
+          echo "VITE_ADMOB_BANNER_ID=$ADMOB_BANNER_ID" >> .env
+          echo ">>> AdMob banner ID .env'e eklendi (değer loglanmadı)."
+      - name: AdMob test cihaz ID'lerini .env'e yaz (opsiyonel)
+        env:
+          ADMOB_TEST_DEVICE_IDS: ${{ secrets.ADMOB_TEST_DEVICE_IDS }}
+        run: |
+          if [ -z "$ADMOB_TEST_DEVICE_IDS" ]; then
+            echo ">>> ADMOB_TEST_DEVICE_IDS tanımlı değil, atlanıyor (opsiyonel, build durmaz)."
+          else
+            echo "VITE_ADMOB_TEST_DEVICE_IDS=$ADMOB_TEST_DEVICE_IDS" >> .env
+            echo ">>> Test cihaz ID'leri .env'e eklendi (değer loglanmadı)."
+          fi
+      - name: Web build al
+        run: npm run build
+      - name: Capacitor Android ekle
+        run: |
+          npx cap add android
+          npx cap sync android
+      - name: Android SDK 36'ya güncelle (Play Store zorunluluğu)
+        run: |
+          cat > android/variables.gradle << 'GRADLEEOF'
+          ext {
+              minSdkVersion = 24
+              compileSdkVersion = 36
+              targetSdkVersion = 36
+              androidxActivityVersion = '1.8.0'
+              androidxAppCompatVersion = '1.6.1'
+              androidxCoordinatorLayoutVersion = '1.2.0'
+              androidxCoreVersion = '1.12.0'
+              androidxFragmentVersion = '1.6.2'
+              coreSplashScreenVersion = '1.0.1'
+              androidxWebkitVersion = '1.9.0'
+              junitVersion = '4.13.2'
+              androidxJunitVersion = '1.1.5'
+              androidxEspressoCoreVersion = '3.5.1'
+              cordovaAndroidVersion = '10.1.1'
+          }
+          GRADLEEOF
+          cat android/variables.gradle
+      - name: Konum izinlerini Manifest'e ekle
+        run: |
+          cat > /tmp/add_perms.py << 'PYEOF'
+          path = "android/app/src/main/AndroidManifest.xml"
+          with open(path, "r") as f:
+              content = f.read()
+
+          if "ACCESS_COARSE_LOCATION" not in content:
+              new_perms = (
+                  '    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />\n'
+                  '    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n'
+              )
+              marker = '<uses-permission android:name="android.permission.INTERNET" />'
+              if marker in content:
+                  content = content.replace(marker, marker + "\n" + new_perms.rstrip())
+              else:
+                  content = content.replace("</manifest>", new_perms + "</manifest>")
+              with open(path, "w") as f:
+                  f.write(content)
+              print(">>> Konum izinleri eklendi.")
+          else:
+              print(">>> Konum izinleri zaten mevcut, dokunulmadı.")
+
+          # KRİTİK: Geolocation plugin'in manifest merger'ı GPS donanım özelliğini
+          # otomatik ZORUNLU (required=true) ekliyor — bu da sadece ağ tabanlı konum
+          # kullanan cihazları Play Store listesinden düşürüyor. required="false" ile
+          # override ederek bu cihazların desteğini geri kazanıyoruz.
+          feature_overrides = (
+              '    <uses-feature android:name="android.hardware.location.gps" android:required="false" />\n'
+              '    <uses-feature android:name="android.hardware.location.network" android:required="false" />\n'
+              '    <uses-feature android:name="android.hardware.location" android:required="false" />\n'
+          )
+          if 'android.hardware.location.gps" android:required="false"' not in content:
+              content = content.replace("</manifest>", feature_overrides + "</manifest>")
+              with open(path, "w") as f:
+                  f.write(content)
+              print(">>> GPS donanım özelliği 'required=false' olarak override edildi.")
+          else:
+              print(">>> GPS donanım özelliği zaten override edilmiş, dokunulmadı.")
+          PYEOF
+          python3 /tmp/add_perms.py
+          echo "--- AndroidManifest.xml (izin eklendikten sonra) ---"
+          cat android/app/src/main/AndroidManifest.xml
+      - name: AdMob App ID'yi Manifest'e ekle
+        env:
+          ADMOB_APP_ID: ${{ secrets.ADMOB_APP_ID }}
+        run: |
+          if [ -z "$ADMOB_APP_ID" ]; then
+            echo ">>> HATA: ADMOB_APP_ID secret'ı tanımlı değil. Repo Settings > Secrets and variables > Actions altından ekle."
+            exit 1
+          fi
+          cat > /tmp/add_admob.py << 'PYEOF'
+          import os, re
+          path = "android/app/src/main/AndroidManifest.xml"
+          app_id = os.environ["ADMOB_APP_ID"]
+          with open(path, "r") as f:
+              content = f.read()
+
+          meta_tag = (
+              f'    <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" '
+              f'android:value="{app_id}" />\n'
+          )
+          if 'com.google.android.gms.ads.APPLICATION_ID' not in content:
+              # İlk <application ...> açılış etiketinden hemen sonra ekle.
+              content = re.sub(
+                  r'(<application[^>]*>)',
+                  r'\1\n' + meta_tag.rstrip(),
+                  content,
+                  count=1,
+              )
+              with open(path, "w") as f:
+                  f.write(content)
+              print(">>> AdMob App ID meta-data eklendi.")
+          else:
+              print(">>> AdMob App ID meta-data zaten mevcut, dokunulmadı.")
+          PYEOF
+          python3 /tmp/add_admob.py
+          echo "--- AndroidManifest.xml (AdMob App ID eklendikten sonra) ---"
+          cat android/app/src/main/AndroidManifest.xml
+      - name: Version Code'u otomatik artır
+        run: |
+          NEW_VERSION_CODE=${{ github.run_number }}
+          sed -i "s/versionCode .*/versionCode $NEW_VERSION_CODE/" android/app/build.gradle
+          sed -i "s/versionName .*/versionName \"1.0.$NEW_VERSION_CODE\"/" android/app/build.gradle
+          echo "Yeni versionCode: $NEW_VERSION_CODE"
+          grep "versionCode\|versionName" android/app/build.gradle
+      - name: Ikonları oluştur
+        run: |
+          pip install Pillow
+          cat > /tmp/make_icons.py << 'PYEOF'
+          from PIL import Image
+          import os
+
+          if not os.path.exists('public/meccanen-logo.png'):
+              raise SystemExit(
+                  ">>> HATA: public/meccanen-logo.png bulunamadı. "
+                  "Logo dosyasının GitHub'a repo kökündeki public/ klasörüne "
+                  "yüklendiğinden emin ol (dosya adı ve yol birebir aynı olmalı)."
+              )
+
+          def make_icon(size, out_path, margin_ratio=0.80):
+              img = Image.new('RGBA', (size, size), (2, 6, 23, 255))
+              logo = Image.open('public/meccanen-logo.png').convert('RGBA')
+              target_w = int(size * margin_ratio)
+              ratio = target_w / logo.width
+              target_h = int(logo.height * ratio)
+              logo = logo.resize((target_w, target_h), Image.LANCZOS)
+              x = (size - target_w) // 2
+              y = (size - target_h) // 2
+              img.paste(logo, (x, y), logo)
+              img.save(out_path)
+              print(f"OK {out_path}")
+
+          def make_foreground(size, out_path, margin_ratio=0.54):
+              img = Image.new('RGBA', (size, size), (0, 0, 0, 0))
+              logo = Image.open('public/meccanen-logo.png').convert('RGBA')
+              target_w = int(size * margin_ratio)
+              ratio = target_w / logo.width
+              target_h = int(logo.height * ratio)
+              logo = logo.resize((target_w, target_h), Image.LANCZOS)
+              x = (size - target_w) // 2
+              y = (size - target_h) // 2
+              img.paste(logo, (x, y), logo)
+              img.save(out_path)
+              print(f"OK {out_path}")
+
+          base = 'android/app/src/main/res'
+          for d, s in [('mdpi',48),('hdpi',72),('xhdpi',96),('xxhdpi',144),('xxxhdpi',192)]:
+              os.makedirs(f'{base}/mipmap-{d}', exist_ok=True)
+              make_icon(s, f'{base}/mipmap-{d}/ic_launcher.png')
+              make_icon(s, f'{base}/mipmap-{d}/ic_launcher_round.png')
+
+          for d, s in [('mdpi',108),('hdpi',162),('xhdpi',216),('xxhdpi',324),('xxxhdpi',432)]:
+              os.makedirs(f'{base}/mipmap-{d}', exist_ok=True)
+              make_foreground(s, f'{base}/mipmap-{d}/ic_launcher_foreground.png')
+
+          bg_color_path = f'{base}/values/ic_launcher_background.xml'
+          if os.path.exists(bg_color_path):
+              with open(bg_color_path) as f:
+                  content = f.read()
+              content = content.replace('#FFFFFF', '#020617').replace('#ffffff', '#020617')
+              with open(bg_color_path, 'w') as f:
+                  f.write(content)
+              print(">>> ic_launcher_background rengi navy yapıldı.")
+          else:
+              print(">>> UYARI: ic_launcher_background.xml bulunamadı, arka plan rengi güncellenemedi.")
+          PYEOF
+          python3 /tmp/make_icons.py
+      - name: Debug APK build et
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug
+      - name: Release AAB build et
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        if: ${{ env.KEYSTORE_BASE64 != '' }}
+        working-directory: android
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 -d > app/meccanen.keystore
+          ./gradlew bundleRelease \
+            -Pandroid.injected.signing.store.file=$(pwd)/app/meccanen.keystore \
+            -Pandroid.injected.signing.store.password=$KEYSTORE_PASSWORD \
+            -Pandroid.injected.signing.key.alias=$KEY_ALIAS \
+            -Pandroid.injected.signing.key.password=$KEY_PASSWORD
+      - name: Debug APK kaydet
+        uses: actions/upload-artifact@v4
+        with:
+          name: meccanen-hava-durumu-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
+      - name: Release AAB kaydet
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        if: ${{ env.KEYSTORE_BASE64 != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: meccanen-hava-durumu-release-aab
+          path: android/app/build/outputs/bundle/release/app-release.aab
+          retention-days: 30
