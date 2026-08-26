@@ -16,6 +16,7 @@ import {
   getSupporterProducts, purchaseSupporterBadge, checkIsSupporter, restoreSupporterPurchases,
   SUPPORTER_PRODUCT_IDS, type SupporterProductId,
 } from "./services/billingService";
+import { showBannerAd, hideBannerAd, onBannerHeightChange } from "./services/adMobService";
 import type { WeatherBundle } from "./types";
 
 /**
@@ -559,8 +560,41 @@ export default function App() {
   const [purchasingId, setPurchasingId] = useState<string | null>(null);
 
   useEffect(() => {
-    checkIsSupporter().then(setIsSupporterUser).finally(() => setSupporterLoading(false));
+    // NOT: Play Billing native çağrısı (özellikle Play Store bağlantısı
+    // kuramayan side-load edilmiş debug build'lerde) hiç sonuçlanmayabilir.
+    // Bu, aşağıdaki AdMob banner effect'ini süresiz bloke eder çünkü o,
+    // supporterLoading netleşene kadar bekliyor. 5 saniyelik zaman aşımı
+    // ile bu askıda kalma senaryosunda "destekçi değil" varsayılıp banner
+    // yine de gösterilir; gerçek durum netleştiğinde (varsa) güncellenir.
+    let settled = false;
+    const timeoutId = setTimeout(() => {
+      if (!settled) { settled = true; setSupporterLoading(false); }
+    }, 5000);
+    checkIsSupporter()
+      .then((v) => { if (!settled) setIsSupporterUser(v); })
+      .finally(() => {
+        if (!settled) { settled = true; setSupporterLoading(false); }
+        clearTimeout(timeoutId);
+      });
+    return () => clearTimeout(timeoutId);
   }, []);
+
+  // ---- AdMob banner ----
+  // Destekçi Rozeti sahiplerine reklam gösterilmez. Durum netleşene kadar
+  // (supporterLoading) banner AÇILMAZ — gereksiz "yanıp sönme" olmasın.
+  const [bannerHeight, setBannerHeight] = useState(0);
+
+  useEffect(() => {
+    if (supporterLoading) return;
+    if (isSupporterUser) {
+      hideBannerAd();
+      setBannerHeight(0);
+      return;
+    }
+    showBannerAd();
+    const unsubscribe = onBannerHeightChange(setBannerHeight);
+    return unsubscribe;
+  }, [supporterLoading, isSupporterUser]);
 
   const handleSupporterPurchase = async (productId: SupporterProductId) => {
     setPurchasingId(productId);
@@ -689,6 +723,7 @@ export default function App() {
 
   return (
     <div dir={lang === "ar" || lang === "ur" ? "rtl" : "ltr"}
+      style={{ paddingBottom: bannerHeight ? bannerHeight + 12 : undefined }}
       className={`min-h-screen ${th.bg} ${th.textPrimary} relative overflow-hidden p-3 sm:p-6 md:p-8 transition-colors duration-700`}>
       <div className={`pointer-events-none absolute -top-32 -left-32 w-96 h-96 rounded-full blur-3xl ${th.blob1}`} />
       <div className={`pointer-events-none absolute -bottom-32 -right-32 w-96 h-96 rounded-full blur-3xl ${th.blob2}`} />
