@@ -366,6 +366,19 @@ function SettingsPanel({
                 {t("findMyLocation", lang)}
               </button>
 
+              <div className={`flex items-center justify-between gap-3 px-3 py-3 rounded-xl border ${th.card}`}>
+                <div className="flex-1">
+                  <p className={`text-sm font-medium ${th.textPrimary}`}>{t("autoLocation", lang)}</p>
+                  <p className={`text-xs ${th.textMuted}`}>{t("autoLocationDesc", lang)}</p>
+                </div>
+                <button
+                  role="switch" aria-checked={autoLocationEnabled}
+                  onClick={() => onToggleAutoLocation(!autoLocationEnabled)}
+                  className={`shrink-0 relative w-11 h-6 rounded-full transition-colors ${autoLocationEnabled ? th.accent + " bg-current" : "bg-black/20"}`}>
+                  <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${autoLocationEnabled ? "translate-x-5" : "translate-x-0"}`} />
+                </button>
+              </div>
+
               <div className="flex gap-2">
                 <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
                   onKeyDown={e => e.key === "Enter" && performSearch()}
