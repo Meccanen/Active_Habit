@@ -229,6 +229,21 @@ jobs:
               print(">>> UYARI: ic_launcher_background.xml bulunamadı, arka plan rengi güncellenemedi.")
           PYEOF
           python3 /tmp/make_icons.py
+      - name: Sabit debug keystore'u kur
+        env:
+          DEBUG_KEYSTORE_BASE64: ${{ secrets.DEBUG_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$DEBUG_KEYSTORE_BASE64" ]; then
+            echo ">>> UYARI: DEBUG_KEYSTORE_BASE64 secret'ı tanımlı değil."
+            echo ">>> Gradle'ın varsayılan (her build'de YENİDEN ÜRETİLEN) debug keystore'u kullanılacak."
+            echo ">>> Bu durumda ANDROID_ID (ve dolayısıyla AdMob test cihaz ID'si) HER BUILD'DE DEĞİŞİR."
+            echo ">>> Kalıcı bir test cihaz ID'si için bu secret'ı eklemen gerekiyor."
+          else
+            mkdir -p ~/.android
+            echo "$DEBUG_KEYSTORE_BASE64" | base64 -d > ~/.android/debug.keystore
+            echo ">>> Sabit debug keystore ~/.android/debug.keystore konumuna yazıldı."
+            echo ">>> Artık her build aynı sertifikayla imzalanacak, ANDROID_ID/test cihaz ID'si değişmeyecek."
+          fi
       - name: Debug APK build et
         working-directory: android
         run: |
