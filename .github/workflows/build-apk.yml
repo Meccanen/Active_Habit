@@ -5,6 +5,7 @@ on:
   workflow_dispatch:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  HAS_RELEASE_KEYSTORE: ${{ secrets.KEYSTORE_BASE64 != '' }}
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -255,7 +256,7 @@ jobs:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        if: ${{ secrets.KEYSTORE_BASE64 != '' }}
+        if: ${{ env.HAS_RELEASE_KEYSTORE == 'true' }}
         working-directory: android
         run: |
           echo "$KEYSTORE_BASE64" | base64 -d > app/meccanen.keystore
@@ -273,7 +274,7 @@ jobs:
       - name: Release AAB kaydet
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
-        if: ${{ secrets.KEYSTORE_BASE64 != '' }}
+        if: ${{ env.HAS_RELEASE_KEYSTORE == 'true' }}
         uses: actions/upload-artifact@v4
         with:
           name: meccanen-hava-durumu-release-aab
