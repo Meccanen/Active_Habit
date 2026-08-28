@@ -1,6 +1,6 @@
 {
-  "appId": "meccanen.hava.durumu.v1",
-  "appName": "Meccanen Hava Durumu",
+  "appId": "com.specialweatherassistant.app",
+  "appName": "Meccanen Hava Durumu Asistanı",
   "webDir": "dist",
   "server": { "androidScheme": "https" },
   "android": { "allowMixedContent": true }
