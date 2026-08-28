@@ -1,7 +1,7 @@
 export type LangCode = "tr" | "en" | "ar" | "de" | "ur";
 
 const en: Record<string, string> = {
-  appName: "Weather",
+  appName: "Weather Assistant",
   adFree: "Ad-Free",
   theme_gece: "Midnight Blue",
   theme_alacakaranlik: "Twilight",
@@ -98,7 +98,7 @@ const en: Record<string, string> = {
 };
 
 const de: Record<string, string> = {
-  appName: "Wetter",
+  appName: "Wetter-Assistent",
   adFree: "Werbefrei",
   theme_gece: "Mitternachtsblau",
   theme_alacakaranlik: "Abenddämmerung",
@@ -195,7 +195,7 @@ const de: Record<string, string> = {
 };
 
 const tr: Record<string, string> = {
-  appName: "Hava Durumu",
+  appName: "Hava Durumu Asistanı",
   adFree: "Reklamsız",
   theme_gece: "Gece Mavisi",
   theme_alacakaranlik: "Alacakaranlık",
@@ -292,7 +292,7 @@ const tr: Record<string, string> = {
 };
 
 const ar: Record<string, string> = {
-  appName: "الطقس",
+  appName: "مساعد الطقس",
   adFree: "بدون إعلانات",
   theme_gece: "أزرق الليل",
   theme_alacakaranlik: "الشفق",
@@ -389,7 +389,7 @@ const ar: Record<string, string> = {
 };
 
 const ur: Record<string, string> = {
-  appName: "موسم",
+  appName: "موسمی معاون",
   adFree: "اشتہار سے پاک",
   theme_gece: "نیلی رات",
   theme_alacakaranlik: "شفق",
