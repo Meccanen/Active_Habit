@@ -2,8 +2,8 @@ import React, { useState, useEffect, useMemo, useRef } from "react";
 import { motion } from "motion/react";
 import {
   MapPin, Search, X, Settings, Palette, Check, Plus, Trash2,
-  Coffee, Navigation, RefreshCw, Droplets, Wind, Umbrella, Gauge, Sunrise, Sunset,
-  ChevronsDown, CloudSun,
+  Navigation, Droplets, Wind, Umbrella, Gauge, Sunrise, Sunset,
+  ChevronsDown, CloudSun, Mail, Shield,
 } from "lucide-react";
 import { Location } from "./types";
 export type FontScale = "normal" | "large" | "xlarge";
@@ -12,11 +12,7 @@ import { getWeatherMapping } from "./utils/weatherHelper";
 import { fetchWeatherBundle, WeatherServiceError } from "./services/weatherService";
 import { requestLocationPermission, getCurrentPosition } from "./utils/locationHelper";
 import { t, detectLanguage, LangCode } from "./utils/i18n";
-import {
-  getSupporterProducts, purchaseSupporterBadge, checkIsSupporter, restoreSupporterPurchases,
-  SUPPORTER_PRODUCT_IDS, type SupporterProductId,
-} from "./services/billingService";
-import { showBannerAd, hideBannerAd, onBannerHeightChange } from "./services/adMobService";
+import { showBannerAd, onBannerHeightChange } from "./services/adMobService";
 import type { WeatherBundle } from "./types";
 
 /**
@@ -239,8 +235,6 @@ function SettingsPanel({
   onFindLocation, isDetectingLocation,
   autoLocationEnabled, onToggleAutoLocation,
   initialTab,
-  isSupporterUser, supporterLoading, purchasingId,
-  onSupporterPurchase, onSupporterRestore,
 }: {
   theme: ThemeKey; setTheme: (k: ThemeKey) => void;
   location: Location; setLocation: (l: Location) => void;
@@ -250,9 +244,6 @@ function SettingsPanel({
   onFindLocation: () => void; isDetectingLocation: boolean;
   autoLocationEnabled: boolean; onToggleAutoLocation: (val: boolean) => void;
   initialTab?: "tema" | "konum" | "dil" | "hakkinda";
-  isSupporterUser: boolean; supporterLoading: boolean; purchasingId: string | null;
-  onSupporterPurchase: (productId: SupporterProductId) => void;
-  onSupporterRestore: () => void;
 }) {
   const [tab, setTab] = useState<"tema" | "konum" | "dil" | "hakkinda">(initialTab || "tema");
   const [searchQuery, setSearchQuery] = useState("");
@@ -461,32 +452,35 @@ function SettingsPanel({
               </div>
 
               <div className={`rounded-2xl border p-4 space-y-3 ${th.card}`}>
-                <div className="flex items-center gap-2">
-                  <Coffee size={18} className={th.accent} />
-                  <h4 className={`font-medium text-sm ${th.textPrimary}`}>{t("supporterTitle", lang)}</h4>
-                </div>
-                <p className={`text-xs ${th.textSecondary}`}>{t("supporterDesc", lang)}</p>
-
-                {isSupporterUser ? (
-                  <p className={`text-sm font-medium ${th.accent}`}>{t("supporterOwned", lang)}</p>
-                ) : (
-                  <div className="space-y-2">
-                    <button disabled={supporterLoading || purchasingId !== null}
-                      onClick={() => onSupporterPurchase(SUPPORTER_PRODUCT_IDS[0])}
-                      className={`w-full py-2.5 rounded-xl text-sm font-medium border ${th.card} ${th.cardHover} ${th.accent}`}>
-                      {purchasingId === SUPPORTER_PRODUCT_IDS[0] ? "…" : t("supporterButtonSilver", lang)}
-                    </button>
-                    <button disabled={supporterLoading || purchasingId !== null}
-                      onClick={() => onSupporterPurchase(SUPPORTER_PRODUCT_IDS[1])}
-                      className={`w-full py-2.5 rounded-xl text-sm font-medium border ${th.card} ${th.cardHover} ${th.accent}`}>
-                      {purchasingId === SUPPORTER_PRODUCT_IDS[1] ? "…" : t("supporterButtonGold", lang)}
-                    </button>
-                  </div>
-                )}
-                <button onClick={onSupporterRestore} className={`w-full text-xs underline ${th.textMuted}`}>
-                  {t("supporterRestore", lang)}
-                </button>
+                <p className={`text-sm leading-relaxed ${th.textSecondary}`}>{t("aboutDescription", lang)}</p>
               </div>
+
+              <div className={`rounded-2xl border p-4 space-y-3 ${th.card}`}>
+                <h4 className={`font-medium text-sm ${th.textPrimary}`}>{t("aboutFeaturesTitle", lang)}</h4>
+                <ul className="space-y-2">
+                  {(["aboutFeature1", "aboutFeature2", "aboutFeature3", "aboutFeature4"] as const).map((key) => (
+                    <li key={key} className="flex items-start gap-2">
+                      <Check size={15} className={`mt-0.5 shrink-0 ${th.accent}`} />
+                      <span className={`text-xs leading-relaxed ${th.textSecondary}`}>{t(key, lang)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className={`rounded-2xl border p-4 space-y-3 ${th.card}`}>
+                <a href="https://meccanen.github.io/Hava_Durumu/privacy-policy-en.html" target="_blank" rel="noopener noreferrer"
+                  className={`flex items-center gap-2 text-xs font-medium ${th.accent}`}>
+                  <Shield size={15} />
+                  {t("aboutPrivacyLink", lang)}
+                </a>
+                <a href="mailto:meccanen@meccanen.xyz"
+                  className={`flex items-center gap-2 text-xs ${th.textSecondary}`}>
+                  <Mail size={15} />
+                  {t("aboutContact", lang)}
+                </a>
+              </div>
+
+              <p className={`text-center text-xs ${th.textMuted}`}>{t("aboutFooter", lang)}</p>
             </div>
           )}
         </div>
@@ -567,67 +561,17 @@ export default function App() {
 
   useEffect(() => { loadWeather(); }, [location.latitude, location.longitude, lang]);
 
-  // ---- Destekçi Rozeti ----
-  const [isSupporterUser, setIsSupporterUser] = useState(false);
-  const [supporterLoading, setSupporterLoading] = useState(true);
-  const [purchasingId, setPurchasingId] = useState<string | null>(null);
-
-  useEffect(() => {
-    // NOT: Play Billing native çağrısı (özellikle Play Store bağlantısı
-    // kuramayan side-load edilmiş debug build'lerde) hiç sonuçlanmayabilir.
-    // Bu, aşağıdaki AdMob banner effect'ini süresiz bloke eder çünkü o,
-    // supporterLoading netleşene kadar bekliyor. 5 saniyelik zaman aşımı
-    // ile bu askıda kalma senaryosunda "destekçi değil" varsayılıp banner
-    // yine de gösterilir; gerçek durum netleştiğinde (varsa) güncellenir.
-    let settled = false;
-    const timeoutId = setTimeout(() => {
-      if (!settled) { settled = true; setSupporterLoading(false); }
-    }, 5000);
-    checkIsSupporter()
-      .then((v) => { if (!settled) setIsSupporterUser(v); })
-      .finally(() => {
-        if (!settled) { settled = true; setSupporterLoading(false); }
-        clearTimeout(timeoutId);
-      });
-    return () => clearTimeout(timeoutId);
-  }, []);
-
   // ---- AdMob banner ----
-  // Destekçi Rozeti sahiplerine reklam gösterilmez. Durum netleşene kadar
-  // (supporterLoading) banner AÇILMAZ — gereksiz "yanıp sönme" olmasın.
+  // NOT: Şu an herkese reklam gösteriliyor. Abonelik sistemi (aylık/yıllık,
+  // reklamları kaldıran) devreye girdiğinde bu effect abonelik durumuna göre
+  // koşullu hale getirilecek.
   const [bannerHeight, setBannerHeight] = useState(0);
 
   useEffect(() => {
-    if (supporterLoading) return;
-    if (isSupporterUser) {
-      hideBannerAd();
-      setBannerHeight(0);
-      return;
-    }
     showBannerAd();
     const unsubscribe = onBannerHeightChange(setBannerHeight);
     return unsubscribe;
-  }, [supporterLoading, isSupporterUser]);
-
-  const handleSupporterPurchase = async (productId: SupporterProductId) => {
-    setPurchasingId(productId);
-    try {
-      const result = await purchaseSupporterBadge(productId);
-      if (result.success) setIsSupporterUser(true);
-    } finally {
-      setPurchasingId(null);
-    }
-  };
-
-  const handleSupporterRestore = async () => {
-    setSupporterLoading(true);
-    try {
-      const restored = await restoreSupporterPurchases();
-      setIsSupporterUser(restored);
-    } finally {
-      setSupporterLoading(false);
-    }
-  };
+  }, []);
 
   // ---- Konum tespiti (namaz vaktindeki mantıkla birebir) ----
   const detectAndUpdateLocation = async () => {
@@ -804,9 +748,14 @@ export default function App() {
                 className={`px-[18px] h-[48px] flex items-center justify-center text-[16px] font-bold border rounded-full transition-all cursor-pointer ${hdrBtnBg} ${hdrBtnText}`}>
                 {lang.toUpperCase()}
               </button>
-              <button onClick={loadWeather} disabled={weatherLoading}
+              <button onClick={() => {
+                  const order = Object.keys(THEMES) as ThemeKey[];
+                  const next = order[(order.indexOf(themeKey) + 1) % order.length];
+                  setTheme(next);
+                }}
+                title={t("changeTheme", lang)}
                 className={`w-[48px] h-[48px] flex items-center justify-center border rounded-full transition-all cursor-pointer ${hdrBtnBg} ${hdrBtnText}`}>
-                <RefreshCw size={19} className={weatherLoading ? "animate-spin" : ""} />
+                <Palette size={19} />
               </button>
             </div>
           </div>
@@ -975,8 +924,6 @@ export default function App() {
           onFindLocation={handleFindLocation} isDetectingLocation={isDetectingLocation}
           autoLocationEnabled={autoLocationEnabled} onToggleAutoLocation={handleToggleAutoLocation}
           initialTab={settingsTab}
-          isSupporterUser={isSupporterUser} supporterLoading={supporterLoading} purchasingId={purchasingId}
-          onSupporterPurchase={handleSupporterPurchase} onSupporterRestore={handleSupporterRestore}
         />
       )}
     </div>
