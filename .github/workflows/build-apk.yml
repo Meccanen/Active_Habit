@@ -25,15 +25,15 @@ jobs:
         uses: android-actions/setup-android@v3
       - name: Bagımlılıkları yükle
         run: npm install
-      - name: OpenWeather API anahtarını .env'e yaz
+      - name: WeatherAPI.com anahtarını .env'e yaz
         env:
-          OPENWEATHER_API_KEY: ${{ secrets.OPENWEATHER_API_KEY }}
+          WEATHER_API_KEY: ${{ secrets.WEATHER_API_KEY }}
         run: |
-          if [ -z "$OPENWEATHER_API_KEY" ]; then
-            echo ">>> HATA: OPENWEATHER_API_KEY secret'ı tanımlı değil. Repo Settings > Secrets and variables > Actions altından ekle."
+          if [ -z "$WEATHER_API_KEY" ]; then
+            echo ">>> HATA: WEATHER_API_KEY secret'ı tanımlı değil. Repo Settings > Secrets and variables > Actions altından ekle."
             exit 1
           fi
-          echo "VITE_OPENWEATHER_API_KEY=$OPENWEATHER_API_KEY" >> .env
+          echo "VITE_WEATHER_API_KEY=$WEATHER_API_KEY" >> .env
           echo ">>> .env dosyası oluşturuldu (key değeri loglanmadı)."
       - name: AdMob banner ID'sini .env'e yaz
         env:
