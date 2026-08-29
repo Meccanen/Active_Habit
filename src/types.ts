@@ -13,11 +13,36 @@ export interface CurrentWeather {
   humidity: number;
   windSpeed: number;
   pressure: number;
-  weatherCode: number; // WMO kodu
+  weatherCode: number; // WMO kodu (WeatherAPI kodlarından çevrilir)
   isDay: boolean;
   sunrise: number; // unix ts
   sunset: number;  // unix ts
   popToday: number; // bugünkü maksimum yağış olasılığı (0-100)
+  uvIndex: number;
+}
+
+export interface AirQuality {
+  usEpaIndex: number; // 1 (İyi) — 6 (Tehlikeli)
+  pm2_5: number;
+  pm10: number;
+  o3: number;
+}
+
+export interface Astronomy {
+  sunrise: number; // unix ts
+  sunset: number;  // unix ts
+  moonrise: number | null; // unix ts
+  moonset: number | null;  // unix ts
+  moonPhase: string; // WeatherAPI'nin döndürdüğü ham metin (ör. "Waxing Gibbous")
+  moonIllumination: number; // 0-100
+}
+
+export interface WeatherAlert {
+  headline: string;
+  event: string;
+  severity: string;
+  effect: string; // desc
+  expiresTs: number | null;
 }
 
 export interface HourlyForecast {
@@ -40,6 +65,9 @@ export interface DailyForecast {
 export interface WeatherBundle {
   current: CurrentWeather;
   hourly: HourlyForecast[]; // önümüzdeki 48 saat
-  daily: DailyForecast[];   // önümüzdeki 7 gün
+  daily: DailyForecast[];   // önümüzdeki 7 gün (şu an ücretsiz katmanda 3 gün)
+  airQuality: AirQuality | null;
+  astronomy: Astronomy | null;
+  alerts: WeatherAlert[];
   fetchedAt: number;
 }

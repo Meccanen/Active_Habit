@@ -3,7 +3,7 @@ import { motion } from "motion/react";
 import {
   MapPin, Search, X, Settings, Palette, Check, Plus, Trash2,
   Navigation, Droplets, Wind, Umbrella, Gauge, Sunrise, Sunset,
-  ChevronsDown, CloudSun, Mail, Shield,
+  ChevronsDown, CloudSun, Mail, Shield, SunMedium, Leaf, Moon, AlertTriangle,
 } from "lucide-react";
 import { Location } from "./types";
 export type FontScale = "normal" | "large" | "xlarge";
@@ -675,6 +675,28 @@ export default function App() {
     weekday: "short", day: "numeric", month: "short", timeZone: location.timezone || "Europe/Istanbul",
   }).format(new Date(dt * 1000));
 
+  // US EPA index (1-6) → i18n anahtarı + renk sınıfı
+  const getAqiInfo = (usEpaIndex: number): { key: string; colorClass: string } => {
+    switch (usEpaIndex) {
+      case 1: return { key: "aqiGood", colorClass: "text-emerald-500" };
+      case 2: return { key: "aqiModerate", colorClass: "text-yellow-500" };
+      case 3: return { key: "aqiUnhealthySensitive", colorClass: "text-orange-500" };
+      case 4: return { key: "aqiUnhealthy", colorClass: "text-red-500" };
+      case 5: return { key: "aqiVeryUnhealthy", colorClass: "text-purple-500" };
+      case 6: return { key: "aqiHazardous", colorClass: "text-rose-700" };
+      default: return { key: "aqiUnknown", colorClass: "text-slate-400" };
+    }
+  };
+
+  // WeatherAPI'nin İngilizce ay evresi metni → i18n anahtarı
+  const MOON_PHASE_KEYS: Record<string, string> = {
+    "New Moon": "moonNew", "Waxing Crescent": "moonWaxingCrescent",
+    "First Quarter": "moonFirstQuarter", "Waxing Gibbous": "moonWaxingGibbous",
+    "Full Moon": "moonFull", "Waning Gibbous": "moonWaningGibbous",
+    "Last Quarter": "moonLastQuarter", "Waning Crescent": "moonWaningCrescent",
+  };
+  const getMoonPhaseKey = (phase: string) => MOON_PHASE_KEYS[phase] || "moonUnknown";
+
   const hdrBtnBg = isLight(themeKey) ? "bg-black/5 border-black/10" : "bg-white/5 border-white/10";
   const hdrBtnText = th.textSecondary;
 
@@ -779,6 +801,16 @@ export default function App() {
         {weather && currentMapping && (
           <>
             {/* Hero kart — namaz vaktindeki saat kartıyla aynı ağırlıkta (rounded-3xl, shadow-2xl, gradient sayı) */}
+            {weather.alerts.length > 0 && (
+              <section className={`rounded-2xl border-2 border-red-500/40 bg-red-500/10 p-4 flex items-start gap-3`}>
+                <AlertTriangle size={20} className="text-red-500 shrink-0 mt-0.5" />
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-red-500">{weather.alerts[0].event}</p>
+                  <p className={`text-xs mt-0.5 ${th.textSecondary}`}>{weather.alerts[0].headline}</p>
+                </div>
+              </section>
+            )}
+
             <section className={`${th.card} border rounded-3xl p-6 sm:p-7 transition-all duration-300 shadow-2xl relative overflow-hidden`}>
               <div className={`pointer-events-none absolute inset-0 bg-gradient-to-b ${currentMapping.bgClass}`} />
 
@@ -835,6 +867,29 @@ export default function App() {
                   <div className="flex items-center gap-1.5"><Sunrise size={15} className={th.accent3} />{formatHour(weather.current.sunrise)}</div>
                   <div className="flex items-center gap-1.5"><Sunset size={15} className={th.accent3} />{formatHour(weather.current.sunset)}</div>
                 </div>
+              </div>
+            </section>
+
+            {/* Ekstra bilgiler: UV, Hava Kalitesi, Ay Evresi */}
+            <section className="grid grid-cols-3 gap-2.5">
+              <div className={`flex flex-col items-center gap-1.5 rounded-2xl border p-3.5 ${th.card}`}>
+                <SunMedium size={18} className="text-amber-500" />
+                <span className={`text-lg font-bold ${th.textPrimary}`}>{weather.current.uvIndex}</span>
+                <span className={`text-[10px] text-center ${th.textMuted}`}>{t("uvIndex", lang)}</span>
+              </div>
+              <div className={`flex flex-col items-center gap-1.5 rounded-2xl border p-3.5 ${th.card}`}>
+                <Leaf size={18} className={weather.airQuality ? getAqiInfo(weather.airQuality.usEpaIndex).colorClass : "text-slate-400"} />
+                <span className={`text-xs font-bold text-center ${weather.airQuality ? getAqiInfo(weather.airQuality.usEpaIndex).colorClass : th.textPrimary}`}>
+                  {weather.airQuality ? t(getAqiInfo(weather.airQuality.usEpaIndex).key, lang) : "—"}
+                </span>
+                <span className={`text-[10px] text-center ${th.textMuted}`}>{t("airQuality", lang)}</span>
+              </div>
+              <div className={`flex flex-col items-center gap-1.5 rounded-2xl border p-3.5 ${th.card}`}>
+                <Moon size={18} className={th.accent3} />
+                <span className={`text-xs font-bold text-center ${th.textPrimary}`}>
+                  {weather.astronomy ? t(getMoonPhaseKey(weather.astronomy.moonPhase), lang) : "—"}
+                </span>
+                <span className={`text-[10px] text-center ${th.textMuted}`}>{t("moonPhase", lang)}</span>
               </div>
             </section>
 
