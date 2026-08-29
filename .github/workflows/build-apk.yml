@@ -121,6 +121,18 @@ jobs:
               print(">>> GPS donanım özelliği 'required=false' olarak override edildi.")
           else:
               print(">>> GPS donanım özelliği zaten override edilmiş, dokunulmadı.")
+
+          # AdMob SDK zaten kendi kütüphane manifest'i üzerinden bu izni otomatik
+          # ekliyor (manifest merger ile) — burada açıkça yazmak sadece kesinlik
+          # ve netlik için, teknik olarak zorunlu değil.
+          if "com.google.android.gms.permission.AD_ID" not in content:
+              ad_id_perm = '    <uses-permission android:name="com.google.android.gms.permission.AD_ID" />\n'
+              content = content.replace("</manifest>", ad_id_perm + "</manifest>")
+              with open(path, "w") as f:
+                  f.write(content)
+              print(">>> AD_ID izni eklendi (AdMob için, açıkça belirtildi).")
+          else:
+              print(">>> AD_ID izni zaten mevcut, dokunulmadı.")
           PYEOF
           python3 /tmp/add_perms.py
           echo "--- AndroidManifest.xml (izin eklendikten sonra) ---"
