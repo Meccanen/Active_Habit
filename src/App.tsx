@@ -802,13 +802,9 @@ export default function App() {
           <>
             {/* Hero kart — namaz vaktindeki saat kartıyla aynı ağırlıkta (rounded-3xl, shadow-2xl, gradient sayı) */}
             {weather.alerts.length > 0 && (
-              <section className={`rounded-2xl border-2 border-red-500/40 bg-red-500/10 p-4 flex items-start gap-3`}>
-                <AlertTriangle size={20} className="text-red-500 shrink-0 mt-0.5" />
-                <div className="min-w-0">
-                  <p className="text-sm font-bold text-red-500">{weather.alerts[0].event}</p>
-                  <p className={`text-xs mt-0.5 ${th.textSecondary}`}>{weather.alerts[0].headline}</p>
-                  <p className={`text-[10px] mt-1 italic ${th.textMuted}`}>{t("alertOriginalLangNote", lang)}</p>
-                </div>
+              <section className={`rounded-2xl border-2 border-red-500/40 bg-red-500/10 p-4 flex items-center gap-3`}>
+                <AlertTriangle size={20} className="text-red-500 shrink-0" />
+                <p className="text-sm font-semibold text-red-500">{t("alertGenericWarning", lang)}</p>
               </section>
             )}
 
@@ -845,22 +841,22 @@ export default function App() {
                   <div className="flex flex-col items-center gap-1.5 min-w-0">
                     <Droplets size={16} className={th.accent2} />
                     <span className={`font-semibold ${th.textPrimary}`}>{weather.current.humidity}%</span>
-                    <span className={`text-center leading-tight break-words ${th.textMuted}`}>{t("wxHumidity", lang)}</span>
+                    <span className={`w-full text-center leading-tight break-words ${th.textMuted}`}>{t("wxHumidity", lang)}</span>
                   </div>
                   <div className="flex flex-col items-center gap-1.5 min-w-0">
                     <Wind size={16} className={th.accent2} />
                     <span className={`font-semibold ${th.textPrimary}`}>{Math.round(weather.current.windSpeed)} m/s</span>
-                    <span className={`text-center leading-tight break-words ${th.textMuted}`}>{t("wxWind", lang)}</span>
+                    <span className={`w-full text-center leading-tight break-words ${th.textMuted}`}>{t("wxWind", lang)}</span>
                   </div>
                   <div className="flex flex-col items-center gap-1.5 min-w-0">
                     <Gauge size={16} className={th.accent2} />
                     <span className={`font-semibold ${th.textPrimary}`}>{weather.current.pressure}</span>
-                    <span className={`text-center leading-tight break-words ${th.textMuted}`}>{t("wxPressure", lang)}</span>
+                    <span className={`w-full text-center leading-tight break-words ${th.textMuted}`}>{t("wxPressure", lang)}</span>
                   </div>
                   <div className="flex flex-col items-center gap-1.5 min-w-0">
                     <Umbrella size={16} className={th.accent2} />
                     <span className={`font-semibold ${th.textPrimary}`}>{Math.round(weather.current.popToday)}%</span>
-                    <span className={`text-center leading-tight break-words ${th.textMuted}`}>{t("wxPop", lang)}</span>
+                    <span className={`w-full text-center leading-tight break-words ${th.textMuted}`}>{t("wxPop", lang)}</span>
                   </div>
                 </div>
 
@@ -876,21 +872,21 @@ export default function App() {
               <div className={`flex flex-col items-center gap-1.5 rounded-2xl border p-3.5 min-w-0 ${th.card}`}>
                 <SunMedium size={18} className="text-amber-500" />
                 <span className={`text-lg font-bold ${th.textPrimary}`}>{weather.current.uvIndex}</span>
-                <span className={`text-[10px] text-center leading-tight break-words ${th.textMuted}`}>{t("uvIndex", lang)}</span>
+                <span className={`w-full text-[10px] text-center leading-tight break-words ${th.textMuted}`}>{t("uvIndex", lang)}</span>
               </div>
               <div className={`flex flex-col items-center gap-1.5 rounded-2xl border p-3.5 min-w-0 ${th.card}`}>
                 <Leaf size={18} className={weather.airQuality ? getAqiInfo(weather.airQuality.usEpaIndex).colorClass : "text-slate-400"} />
-                <span className={`text-xs font-bold text-center leading-tight break-words ${weather.airQuality ? getAqiInfo(weather.airQuality.usEpaIndex).colorClass : th.textPrimary}`}>
+                <span className={`w-full text-xs font-bold text-center leading-tight break-words ${weather.airQuality ? getAqiInfo(weather.airQuality.usEpaIndex).colorClass : th.textPrimary}`}>
                   {weather.airQuality ? t(getAqiInfo(weather.airQuality.usEpaIndex).key, lang) : "—"}
                 </span>
-                <span className={`text-[10px] text-center leading-tight break-words ${th.textMuted}`}>{t("airQuality", lang)}</span>
+                <span className={`w-full text-[10px] text-center leading-tight break-words ${th.textMuted}`}>{t("airQuality", lang)}</span>
               </div>
               <div className={`flex flex-col items-center gap-1.5 rounded-2xl border p-3.5 min-w-0 ${th.card}`}>
                 <Moon size={18} className={th.accent3} />
-                <span className={`text-xs font-bold text-center leading-tight break-words ${th.textPrimary}`}>
+                <span className={`w-full text-xs font-bold text-center leading-tight break-words ${th.textPrimary}`}>
                   {weather.astronomy ? t(getMoonPhaseKey(weather.astronomy.moonPhase), lang) : "—"}
                 </span>
-                <span className={`text-[10px] text-center leading-tight break-words ${th.textMuted}`}>{t("moonPhase", lang)}</span>
+                <span className={`w-full text-[10px] text-center leading-tight break-words ${th.textMuted}`}>{t("moonPhase", lang)}</span>
               </div>
             </section>
 
