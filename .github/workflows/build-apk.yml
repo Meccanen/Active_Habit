@@ -45,6 +45,16 @@ jobs:
           fi
           echo "VITE_ADMOB_BANNER_ID=$ADMOB_BANNER_ID" >> .env
           echo ">>> AdMob banner ID .env'e eklendi (değer loglanmadı)."
+      - name: AdMob ödüllü geçiş reklamı ID'sini .env'e yaz
+        env:
+          ADMOB_REWARDED_INTERSTITIAL_ID: ${{ secrets.ADMOB_REWARDED_INTERSTITIAL_ID }}
+        run: |
+          if [ -z "$ADMOB_REWARDED_INTERSTITIAL_ID" ]; then
+            echo ">>> HATA: ADMOB_REWARDED_INTERSTITIAL_ID secret'ı tanımlı değil. Repo Settings > Secrets and variables > Actions altından ekle."
+            exit 1
+          fi
+          echo "VITE_ADMOB_REWARDED_INTERSTITIAL_ID=$ADMOB_REWARDED_INTERSTITIAL_ID" >> .env
+          echo ">>> AdMob ödüllü geçiş reklamı ID .env'e eklendi (değer loglanmadı)."
       - name: AdMob test cihaz ID'lerini .env'e yaz (opsiyonel)
         env:
           ADMOB_TEST_DEVICE_IDS: ${{ secrets.ADMOB_TEST_DEVICE_IDS }}
