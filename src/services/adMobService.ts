@@ -3,9 +3,11 @@ import {
   BannerAdPosition,
   BannerAdSize,
   BannerAdPluginEvents,
+  RewardInterstitialAdPluginEvents,
   AdmobConsentStatus,
   type BannerAdOptions,
   type AdMobBannerSize,
+  type RewardInterstitialAdOptions,
 } from '@capacitor-community/admob';
 
 /**
@@ -21,6 +23,7 @@ import {
  */
 
 const BANNER_AD_UNIT_ID = import.meta.env.VITE_ADMOB_BANNER_ID;
+const REWARDED_INTERSTITIAL_AD_UNIT_ID = import.meta.env.VITE_ADMOB_REWARDED_INTERSTITIAL_ID;
 
 // Virgülle ayrılmış test cihaz ID listesi (opsiyonel). Boşsa normal üretim
 // modunda çalışılır. Bir cihaz burada kayıtlıysa, o cihaza GERÇEK reklam
@@ -138,4 +141,82 @@ export function onBannerHeightChange(callback: (heightPx: number) => void): () =
     loadedHandle.then((h) => h.remove());
     sizeHandle.then((h) => h.remove());
   };
+}
+
+// ---- Ödüllü Geçiş Reklamı (Rewarded Interstitial) ----
+// Kullanım: UV/Hava Kalitesi/Ay Evresi/Hava Uyarısı gibi ekstra detay
+// ekranlarını açmadan önce. "Oturum başına 1" kuralı: kullanıcı bir kez
+// reklam izleyip ödülü kazandıktan sonra, uygulamayı kapatıp açana kadar
+// (aynı oturumda) tüm bu detay ekranları reklamsız açılır.
+let rewardedUnlockedThisSession = false;
+
+/** Bu oturumda zaten ödüllü reklam izlenip kilidin açılıp açılmadığını döner. */
+export function isRewardedUnlockedThisSession(): boolean {
+  return rewardedUnlockedThisSession;
+}
+
+/**
+ * Detay ekranı açılmadan önce çağrılır.
+ * - Oturumda zaten açılmışsa: hemen true döner, reklam göstermez.
+ * - Ad unit tanımlı değilse veya reklam herhangi bir sebeple
+ *   yüklenemez/gösterilemezse: "fail-open" — içerik yine de açılır
+ *   (kötü bir reklam doluluk oranı yüzünden kullanıcıyı özellikten tamamen
+ *   mahrum bırakmamak tercih edildi; bu bilinçli bir ürün kararıdır).
+ * - Kullanıcı reklamı ödül kazanmadan kapatırsa: false döner, içerik AÇILMAZ.
+ */
+export async function unlockWithRewardedInterstitial(): Promise<boolean> {
+  if (rewardedUnlockedThisSession) return true;
+
+  if (!REWARDED_INTERSTITIAL_AD_UNIT_ID) {
+    console.warn('[adMobService] VITE_ADMOB_REWARDED_INTERSTITIAL_ID tanımlı değil, kilit açık bırakılıyor.');
+    rewardedUnlockedThisSession = true;
+    return true;
+  }
+
+  await initializeAds();
+
+  return new Promise<boolean>((resolve) => {
+    let settled = false;
+    const handles: Promise<{ remove: () => void }>[] = [];
+
+    const finish = (result: boolean) => {
+      if (settled) return;
+      settled = true;
+      handles.forEach((h) => h.then((x) => x.remove()));
+      resolve(result);
+    };
+
+    handles.push(
+      AdMob.addListener(RewardInterstitialAdPluginEvents.Rewarded, () => {
+        rewardedUnlockedThisSession = true;
+        finish(true);
+      })
+    );
+    handles.push(
+      AdMob.addListener(RewardInterstitialAdPluginEvents.Dismissed, () => finish(false))
+    );
+    handles.push(
+      AdMob.addListener(RewardInterstitialAdPluginEvents.FailedToLoad, (error) => {
+        console.error('[adMobService] Ödüllü reklam yüklenemedi, kilit açık bırakılıyor:', error);
+        finish(true); // fail-open
+      })
+    );
+    handles.push(
+      AdMob.addListener(RewardInterstitialAdPluginEvents.FailedToShow, (error) => {
+        console.error('[adMobService] Ödüllü reklam gösterilemedi, kilit açık bırakılıyor:', error);
+        finish(true); // fail-open
+      })
+    );
+
+    (async () => {
+      try {
+        const options: RewardInterstitialAdOptions = { adId: REWARDED_INTERSTITIAL_AD_UNIT_ID };
+        await AdMob.prepareRewardInterstitialAd(options);
+        await AdMob.showRewardInterstitialAd();
+      } catch (error) {
+        console.error('[adMobService] Ödüllü reklam akışı hata verdi, kilit açık bırakılıyor:', error);
+        finish(true); // fail-open
+      }
+    })();
+  });
 }
