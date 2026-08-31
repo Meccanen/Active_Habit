@@ -12,7 +12,7 @@ import { getWeatherMapping } from "./utils/weatherHelper";
 import { fetchWeatherBundle, WeatherServiceError } from "./services/weatherService";
 import { requestLocationPermission, getCurrentPosition } from "./utils/locationHelper";
 import { t, detectLanguage, LangCode } from "./utils/i18n";
-import { showBannerAd, onBannerHeightChange } from "./services/adMobService";
+import { showBannerAd, onBannerHeightChange, unlockWithRewardedInterstitial, isRewardedUnlockedThisSession } from "./services/adMobService";
 import type { WeatherBundle } from "./types";
 
 /**
@@ -567,6 +567,19 @@ export default function App() {
   // koşullu hale getirilecek.
   const [bannerHeight, setBannerHeight] = useState(0);
 
+  // ---- Ödüllü reklamla açılan detay ekranları (UV / Hava Kalitesi / Ay Evresi / Uyarı) ----
+  type DetailKind = "alert" | "uv" | "aq" | "moon";
+  const [detailModal, setDetailModal] = useState<DetailKind | null>(null);
+  const [unlockingDetail, setUnlockingDetail] = useState<DetailKind | null>(null);
+
+  const handleOpenDetail = async (kind: DetailKind) => {
+    if (isRewardedUnlockedThisSession()) { setDetailModal(kind); return; }
+    setUnlockingDetail(kind);
+    const granted = await unlockWithRewardedInterstitial();
+    setUnlockingDetail(null);
+    if (granted) setDetailModal(kind);
+  };
+
   useEffect(() => {
     showBannerAd();
     const unsubscribe = onBannerHeightChange(setBannerHeight);
@@ -697,6 +710,15 @@ export default function App() {
   };
   const getMoonPhaseKey = (phase: string) => MOON_PHASE_KEYS[phase] || "moonUnknown";
 
+  // UV indeksi → risk bandı (WHO standardı) + tavsiye metni anahtarları
+  const getUvBand = (uv: number): { key: string; adviceKey: string; colorClass: string } => {
+    if (uv < 3) return { key: "uvLow", adviceKey: "uvAdviceLow", colorClass: "text-emerald-500" };
+    if (uv < 6) return { key: "uvModerate", adviceKey: "uvAdviceModerate", colorClass: "text-yellow-500" };
+    if (uv < 8) return { key: "uvHigh", adviceKey: "uvAdviceHigh", colorClass: "text-orange-500" };
+    if (uv < 11) return { key: "uvVeryHigh", adviceKey: "uvAdviceVeryHigh", colorClass: "text-red-500" };
+    return { key: "uvExtreme", adviceKey: "uvAdviceExtreme", colorClass: "text-purple-500" };
+  };
+
   const hdrBtnBg = isLight(themeKey) ? "bg-black/5 border-black/10" : "bg-white/5 border-white/10";
   const hdrBtnText = th.textSecondary;
 
@@ -802,10 +824,16 @@ export default function App() {
           <>
             {/* Hero kart — namaz vaktindeki saat kartıyla aynı ağırlıkta (rounded-3xl, shadow-2xl, gradient sayı) */}
             {weather.alerts.length > 0 && (
-              <section className={`rounded-2xl border-2 border-red-500/40 bg-red-500/10 p-4 flex items-center gap-3`}>
+              <button onClick={() => handleOpenDetail("alert")} disabled={unlockingDetail !== null}
+                className={`w-full text-left rounded-2xl border-2 border-red-500/40 bg-red-500/10 p-4 flex items-center gap-3 active:scale-[0.98] transition-transform`}>
                 <AlertTriangle size={20} className="text-red-500 shrink-0" />
-                <p className="text-sm font-semibold text-red-500">{t("alertGenericWarning", lang)}</p>
-              </section>
+                <p className="text-sm font-semibold text-red-500 flex-1">{t("alertGenericWarning", lang)}</p>
+                {unlockingDetail === "alert" ? (
+                  <div className="w-4 h-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin shrink-0" />
+                ) : (
+                  <ChevronsDown size={16} className="text-red-500 shrink-0 -rotate-90" />
+                )}
+              </button>
             )}
 
             <section className={`${th.card} border rounded-3xl p-6 sm:p-7 transition-all duration-300 shadow-2xl relative overflow-hidden`}>
@@ -869,25 +897,43 @@ export default function App() {
 
             {/* Ekstra bilgiler: UV, Hava Kalitesi, Ay Evresi */}
             <section className="grid grid-cols-3 gap-2.5">
-              <div className={`flex flex-col items-center gap-1.5 rounded-2xl border p-3.5 min-w-0 ${th.card}`}>
+              <button onClick={() => handleOpenDetail("uv")} disabled={unlockingDetail !== null}
+                className={`flex flex-col items-center gap-1.5 rounded-2xl border p-3.5 min-w-0 active:scale-[0.97] transition-transform relative ${th.card}`}>
+                {unlockingDetail === "uv" && (
+                  <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-black/20">
+                    <div className={`w-5 h-5 border-2 border-t-transparent rounded-full animate-spin ${th.accent}`} />
+                  </div>
+                )}
                 <SunMedium size={18} className="text-amber-500" />
                 <span className={`text-lg font-bold ${th.textPrimary}`}>{weather.current.uvIndex}</span>
                 <span className={`w-full text-[10px] text-center leading-tight break-words ${th.textMuted}`}>{t("uvIndex", lang)}</span>
-              </div>
-              <div className={`flex flex-col items-center gap-1.5 rounded-2xl border p-3.5 min-w-0 ${th.card}`}>
+              </button>
+              <button onClick={() => handleOpenDetail("aq")} disabled={unlockingDetail !== null}
+                className={`flex flex-col items-center gap-1.5 rounded-2xl border p-3.5 min-w-0 active:scale-[0.97] transition-transform relative ${th.card}`}>
+                {unlockingDetail === "aq" && (
+                  <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-black/20">
+                    <div className={`w-5 h-5 border-2 border-t-transparent rounded-full animate-spin ${th.accent}`} />
+                  </div>
+                )}
                 <Leaf size={18} className={weather.airQuality ? getAqiInfo(weather.airQuality.usEpaIndex).colorClass : "text-slate-400"} />
                 <span className={`w-full text-xs font-bold text-center leading-tight break-words ${weather.airQuality ? getAqiInfo(weather.airQuality.usEpaIndex).colorClass : th.textPrimary}`}>
                   {weather.airQuality ? t(getAqiInfo(weather.airQuality.usEpaIndex).key, lang) : "—"}
                 </span>
                 <span className={`w-full text-[10px] text-center leading-tight break-words ${th.textMuted}`}>{t("airQuality", lang)}</span>
-              </div>
-              <div className={`flex flex-col items-center gap-1.5 rounded-2xl border p-3.5 min-w-0 ${th.card}`}>
+              </button>
+              <button onClick={() => handleOpenDetail("moon")} disabled={unlockingDetail !== null}
+                className={`flex flex-col items-center gap-1.5 rounded-2xl border p-3.5 min-w-0 active:scale-[0.97] transition-transform relative ${th.card}`}>
+                {unlockingDetail === "moon" && (
+                  <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-black/20">
+                    <div className={`w-5 h-5 border-2 border-t-transparent rounded-full animate-spin ${th.accent}`} />
+                  </div>
+                )}
                 <Moon size={18} className={th.accent3} />
                 <span className={`w-full text-xs font-bold text-center leading-tight break-words ${th.textPrimary}`}>
                   {weather.astronomy ? t(getMoonPhaseKey(weather.astronomy.moonPhase), lang) : "—"}
                 </span>
                 <span className={`w-full text-[10px] text-center leading-tight break-words ${th.textMuted}`}>{t("moonPhase", lang)}</span>
-              </div>
+              </button>
             </section>
 
             {/* Saatlik tahmin */}
@@ -977,6 +1023,98 @@ export default function App() {
           autoLocationEnabled={autoLocationEnabled} onToggleAutoLocation={handleToggleAutoLocation}
           initialTab={settingsTab}
         />
+      )}
+
+      {detailModal && weather && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-6"
+          onClick={() => setDetailModal(null)}>
+          <div onClick={(e) => e.stopPropagation()}
+            className={`w-full max-w-sm rounded-3xl border p-6 space-y-4 ${th.card}`}>
+            <div className="flex items-center justify-between">
+              <h3 className={`font-semibold text-base ${th.textPrimary}`}>
+                {detailModal === "alert" && t("alertDetailTitle", lang)}
+                {detailModal === "uv" && t("uvIndex", lang)}
+                {detailModal === "aq" && t("airQuality", lang)}
+                {detailModal === "moon" && t("moonPhase", lang)}
+              </h3>
+              <button onClick={() => setDetailModal(null)} className={th.textMuted}>
+                <X size={20} />
+              </button>
+            </div>
+
+            {detailModal === "alert" && weather.alerts[0] && (
+              <div className="space-y-2">
+                <p className={`text-sm font-bold ${th.textPrimary}`}>{weather.alerts[0].event}</p>
+                <p className={`text-sm ${th.textSecondary}`}>{weather.alerts[0].headline}</p>
+                {weather.alerts[0].effect && (
+                  <p className={`text-xs ${th.textSecondary}`}>{weather.alerts[0].effect}</p>
+                )}
+                <p className={`text-[11px] italic pt-1 ${th.textMuted}`}>{t("alertOriginalLangNote", lang)}</p>
+              </div>
+            )}
+
+            {detailModal === "uv" && (
+              <div className="space-y-2">
+                <div className="flex items-baseline gap-2">
+                  <span className={`text-3xl font-bold ${th.textPrimary}`}>{weather.current.uvIndex}</span>
+                  <span className={`text-sm font-semibold ${getUvBand(weather.current.uvIndex).colorClass}`}>
+                    {t(getUvBand(weather.current.uvIndex).key, lang)}
+                  </span>
+                </div>
+                <p className={`text-sm leading-relaxed ${th.textSecondary}`}>
+                  {t(getUvBand(weather.current.uvIndex).adviceKey, lang)}
+                </p>
+              </div>
+            )}
+
+            {detailModal === "aq" && weather.airQuality && (
+              <div className="space-y-2.5">
+                <p className={`text-sm font-semibold ${getAqiInfo(weather.airQuality.usEpaIndex).colorClass}`}>
+                  {t(getAqiInfo(weather.airQuality.usEpaIndex).key, lang)}
+                </p>
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div className={`rounded-xl border p-2.5 ${th.header}`}>
+                    <p className={`text-sm font-bold ${th.textPrimary}`}>{weather.airQuality.pm2_5}</p>
+                    <p className={`text-[10px] leading-tight ${th.textMuted}`}>{t("aqiDetailPm25", lang)}</p>
+                  </div>
+                  <div className={`rounded-xl border p-2.5 ${th.header}`}>
+                    <p className={`text-sm font-bold ${th.textPrimary}`}>{weather.airQuality.pm10}</p>
+                    <p className={`text-[10px] leading-tight ${th.textMuted}`}>{t("aqiDetailPm10", lang)}</p>
+                  </div>
+                  <div className={`rounded-xl border p-2.5 ${th.header}`}>
+                    <p className={`text-sm font-bold ${th.textPrimary}`}>{weather.airQuality.o3}</p>
+                    <p className={`text-[10px] leading-tight ${th.textMuted}`}>{t("aqiDetailO3", lang)}</p>
+                  </div>
+                </div>
+                <p className={`text-[10px] text-center ${th.textMuted}`}>µg/m³</p>
+              </div>
+            )}
+
+            {detailModal === "moon" && weather.astronomy && (
+              <div className="space-y-3">
+                <p className={`text-base font-semibold ${th.textPrimary}`}>
+                  {t(getMoonPhaseKey(weather.astronomy.moonPhase), lang)}
+                </p>
+                <div className="flex items-center justify-between text-sm">
+                  <span className={th.textMuted}>{t("moonIlluminationLabel", lang)}</span>
+                  <span className={`font-semibold ${th.textPrimary}`}>{weather.astronomy.moonIllumination}%</span>
+                </div>
+                {weather.astronomy.moonrise !== null && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className={th.textMuted}>{t("moonriseLabel", lang)}</span>
+                    <span className={`font-semibold ${th.textPrimary}`}>{formatHour(weather.astronomy.moonrise)}</span>
+                  </div>
+                )}
+                {weather.astronomy.moonset !== null && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className={th.textMuted}>{t("moonsetLabel", lang)}</span>
+                    <span className={`font-semibold ${th.textPrimary}`}>{formatHour(weather.astronomy.moonset)}</span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );
