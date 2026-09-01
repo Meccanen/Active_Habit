@@ -1,73 +1,72 @@
-export interface Location {
+export type Frequency =
+  | { kind: "daily" }
+  | { kind: "weekly"; days: number[] }; // 0=Pazartesi değil, JS getDay() → 0=Pazar ... 6=Cumartesi
+
+export interface Habit {
+  id: string;
   name: string;
-  country: string;
-  latitude: number;
-  longitude: number;
-  timezone?: string;
-  admin1?: string; // bölge/il
+  emoji: string;
+  color: string; // tema içinde kullanılacak renk anahtarı (accent familyası)
+  frequency: Frequency;
+  targetPerDay: number; // günde kaç kez hedef
+  createdAt: string; // YYYY-MM-DD
+  archived: boolean;
+  order: number;
 }
 
-export interface CurrentWeather {
-  temperature: number;
-  apparentTemperature: number;
-  humidity: number;
-  windSpeed: number;
-  pressure: number;
-  weatherCode: number; // WMO kodu (WeatherAPI kodlarından çevrilir)
-  isDay: boolean;
-  sunrise: number; // unix ts
-  sunset: number;  // unix ts
-  popToday: number; // bugünkü maksimum yağış olasılığı (0-100)
-  uvIndex: number;
+export interface HabitLog {
+  habitId: string;
+  date: string; // YYYY-MM-DD
+  count: number; // hedefe doğru ilerleme
 }
 
-export interface AirQuality {
-  usEpaIndex: number; // 1 (İyi) — 6 (Tehlikeli)
-  pm2_5: number;
-  pm10: number;
-  o3: number;
+export type ChallengeStatus = "active" | "completed" | "failed";
+
+export interface Challenge {
+  id: string;
+  templateId: string; // hazır şablon kimliği (custom için "custom")
+  emoji: string;
+  name: string;
+  totalDays: number; // 7 | 21 | 75 | custom
+  startDate: string; // YYYY-MM-DD
+  habitId: string; // challenge'ı takip eden alışkanlık
+  usedGrace: boolean; // gizli 1 günlük mazeret hakkı kullanıldı mı?
+  status: ChallengeStatus;
+  completedAt?: string;
 }
 
-export interface Astronomy {
-  sunrise: number; // unix ts
-  sunset: number;  // unix ts
-  moonrise: number | null; // unix ts
-  moonset: number | null;  // unix ts
-  moonPhase: string; // WeatherAPI'nin döndürdüğü ham metin (ör. "Waxing Gibbous")
-  moonIllumination: number; // 0-100
+export interface ChallengeTemplate {
+  id: string;
+  emoji: string;
+  nameKey: string; // i18n anahtarı
+  days: number;
+  targetPerDay: number;
+  color: string;
+  startCount: number; // günde kaç tekrar (ör. 8 bardak)
 }
 
-export interface WeatherAlert {
-  headline: string;
-  event: string;
-  severity: string;
-  effect: string; // desc
-  expiresTs: number | null;
+export interface AppState {
+  habits: Habit[];
+  logs: HabitLog[];
+  challenges: Challenge[];
 }
 
-export interface HourlyForecast {
-  dt: number; // unix ts
-  temperature: number;
-  feelsLike: number;
-  weatherCode: number;
-  pop: number; // yağış olasılığı (0-1)
-  isDay: boolean;
+export interface DayCell {
+  date: string; // YYYY-MM-DD
+  inMonth: boolean;
+  isToday: boolean;
+  completed: number;
+  due: number;
 }
 
-export interface DailyForecast {
-  dt: number; // unix ts (öğlen referans saati)
-  tempMin: number;
-  tempMax: number;
-  weatherCode: number;
-  pop: number; // yağış olasılığı (0-1)
+export interface TodayStats {
+  due: number;
+  done: number;
+  pct: number;
 }
 
-export interface WeatherBundle {
-  current: CurrentWeather;
-  hourly: HourlyForecast[]; // önümüzdeki 48 saat
-  daily: DailyForecast[];   // önümüzdeki 7 gün (şu an ücretsiz katmanda 3 gün)
-  airQuality: AirQuality | null;
-  astronomy: Astronomy | null;
-  alerts: WeatherAlert[];
-  fetchedAt: number;
+export interface ChallengeEvalResult {
+  usedGraceIds: string[]; // ilk kez kaçıran ve affedilen challenge'lar
+  resetIds: string[]; // mazeret hakkı dolunca sıfırlanan challenge'lar
+  completedIds: string[]; // süresi dolup başarıyla biten challenge'lar
 }

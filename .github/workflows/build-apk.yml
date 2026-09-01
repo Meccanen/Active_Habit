@@ -25,36 +25,27 @@ jobs:
         uses: android-actions/setup-android@v3
       - name: Bagımlılıkları yükle
         run: npm install
-      - name: WeatherAPI.com anahtarını .env'e yaz
-        env:
-          WEATHER_API_KEY: ${{ secrets.WEATHER_API_KEY }}
-        run: |
-          if [ -z "$WEATHER_API_KEY" ]; then
-            echo ">>> HATA: WEATHER_API_KEY secret'ı tanımlı değil. Repo Settings > Secrets and variables > Actions altından ekle."
-            exit 1
-          fi
-          echo "VITE_WEATHER_API_KEY=$WEATHER_API_KEY" >> .env
-          echo ">>> .env dosyası oluşturuldu (key değeri loglanmadı)."
       - name: AdMob banner ID'sini .env'e yaz
         env:
           ADMOB_BANNER_ID: ${{ secrets.ADMOB_BANNER_ID }}
         run: |
           if [ -z "$ADMOB_BANNER_ID" ]; then
-            echo ">>> HATA: ADMOB_BANNER_ID secret'ı tanımlı değil. Repo Settings > Secrets and variables > Actions altından ekle."
-            exit 1
+            echo ">>> UYARI: ADMOB_BANNER_ID secret'ı tanımlı değil. Repo Settings > Secrets and variables > Actions altından ekle."
+            echo ">>> Reklam özellikleri şu an kapalı olduğu için build durdurulmadı (opsiyonel)."
+          else
+            echo "VITE_ADMOB_BANNER_ID=$ADMOB_BANNER_ID" >> .env
+            echo ">>> AdMob banner ID .env'e eklendi (değer loglanmadı)."
           fi
-          echo "VITE_ADMOB_BANNER_ID=$ADMOB_BANNER_ID" >> .env
-          echo ">>> AdMob banner ID .env'e eklendi (değer loglanmadı)."
       - name: AdMob ödüllü geçiş reklamı ID'sini .env'e yaz
         env:
           ADMOB_REWARDED_INTERSTITIAL_ID: ${{ secrets.ADMOB_REWARDED_INTERSTITIAL_ID }}
         run: |
           if [ -z "$ADMOB_REWARDED_INTERSTITIAL_ID" ]; then
-            echo ">>> HATA: ADMOB_REWARDED_INTERSTITIAL_ID secret'ı tanımlı değil. Repo Settings > Secrets and variables > Actions altından ekle."
-            exit 1
+            echo ">>> UYARI: ADMOB_REWARDED_INTERSTITIAL_ID secret'ı tanımlı değil, build durdurulmadı (opsiyonel)."
+          else
+            echo "VITE_ADMOB_REWARDED_INTERSTITIAL_ID=$ADMOB_REWARDED_INTERSTITIAL_ID" >> .env
+            echo ">>> AdMob ödüllü geçiş reklamı ID .env'e eklendi (değer loglanmadı)."
           fi
-          echo "VITE_ADMOB_REWARDED_INTERSTITIAL_ID=$ADMOB_REWARDED_INTERSTITIAL_ID" >> .env
-          echo ">>> AdMob ödüllü geçiş reklamı ID .env'e eklendi (değer loglanmadı)."
       - name: AdMob test cihaz ID'lerini .env'e yaz (opsiyonel)
         env:
           ADMOB_TEST_DEVICE_IDS: ${{ secrets.ADMOB_TEST_DEVICE_IDS }}
@@ -92,70 +83,14 @@ jobs:
           }
           GRADLEEOF
           cat android/variables.gradle
-      - name: Konum izinlerini Manifest'e ekle
-        run: |
-          cat > /tmp/add_perms.py << 'PYEOF'
-          path = "android/app/src/main/AndroidManifest.xml"
-          with open(path, "r") as f:
-              content = f.read()
-
-          if "ACCESS_COARSE_LOCATION" not in content:
-              new_perms = (
-                  '    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />\n'
-                  '    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n'
-              )
-              marker = '<uses-permission android:name="android.permission.INTERNET" />'
-              if marker in content:
-                  content = content.replace(marker, marker + "\n" + new_perms.rstrip())
-              else:
-                  content = content.replace("</manifest>", new_perms + "</manifest>")
-              with open(path, "w") as f:
-                  f.write(content)
-              print(">>> Konum izinleri eklendi.")
-          else:
-              print(">>> Konum izinleri zaten mevcut, dokunulmadı.")
-
-          # KRİTİK: Geolocation plugin'in manifest merger'ı GPS donanım özelliğini
-          # otomatik ZORUNLU (required=true) ekliyor — bu da sadece ağ tabanlı konum
-          # kullanan cihazları Play Store listesinden düşürüyor. required="false" ile
-          # override ederek bu cihazların desteğini geri kazanıyoruz.
-          feature_overrides = (
-              '    <uses-feature android:name="android.hardware.location.gps" android:required="false" />\n'
-              '    <uses-feature android:name="android.hardware.location.network" android:required="false" />\n'
-              '    <uses-feature android:name="android.hardware.location" android:required="false" />\n'
-          )
-          if 'android.hardware.location.gps" android:required="false"' not in content:
-              content = content.replace("</manifest>", feature_overrides + "</manifest>")
-              with open(path, "w") as f:
-                  f.write(content)
-              print(">>> GPS donanım özelliği 'required=false' olarak override edildi.")
-          else:
-              print(">>> GPS donanım özelliği zaten override edilmiş, dokunulmadı.")
-
-          # AdMob SDK zaten kendi kütüphane manifest'i üzerinden bu izni otomatik
-          # ekliyor (manifest merger ile) — burada açıkça yazmak sadece kesinlik
-          # ve netlik için, teknik olarak zorunlu değil.
-          if "com.google.android.gms.permission.AD_ID" not in content:
-              ad_id_perm = '    <uses-permission android:name="com.google.android.gms.permission.AD_ID" />\n'
-              content = content.replace("</manifest>", ad_id_perm + "</manifest>")
-              with open(path, "w") as f:
-                  f.write(content)
-              print(">>> AD_ID izni eklendi (AdMob için, açıkça belirtildi).")
-          else:
-              print(">>> AD_ID izni zaten mevcut, dokunulmadı.")
-          PYEOF
-          python3 /tmp/add_perms.py
-          echo "--- AndroidManifest.xml (izin eklendikten sonra) ---"
-          cat android/app/src/main/AndroidManifest.xml
       - name: AdMob App ID'yi Manifest'e ekle
         env:
           ADMOB_APP_ID: ${{ secrets.ADMOB_APP_ID }}
         run: |
           if [ -z "$ADMOB_APP_ID" ]; then
-            echo ">>> HATA: ADMOB_APP_ID secret'ı tanımlı değil. Repo Settings > Secrets and variables > Actions altından ekle."
-            exit 1
-          fi
-          cat > /tmp/add_admob.py << 'PYEOF'
+            echo ">>> UYARI: ADMOB_APP_ID secret'ı tanımlı değil. Reklam özellikleri kapalıyken gerekmez (opsiyonel)."
+          else
+            cat > /tmp/add_admob.py << 'PYEOF'
           import os, re
           path = "android/app/src/main/AndroidManifest.xml"
           app_id = os.environ["ADMOB_APP_ID"]
@@ -180,9 +115,10 @@ jobs:
           else:
               print(">>> AdMob App ID meta-data zaten mevcut, dokunulmadı.")
           PYEOF
-          python3 /tmp/add_admob.py
-          echo "--- AndroidManifest.xml (AdMob App ID eklendikten sonra) ---"
-          cat android/app/src/main/AndroidManifest.xml
+            python3 /tmp/add_admob.py
+            echo "--- AndroidManifest.xml (AdMob App ID eklendikten sonra) ---"
+            cat android/app/src/main/AndroidManifest.xml
+          fi
       - name: Version Code'u otomatik artır
         run: |
           NEW_VERSION_CODE=${{ github.run_number }}
@@ -290,7 +226,7 @@ jobs:
       - name: Debug APK kaydet
         uses: actions/upload-artifact@v4
         with:
-          name: meccanen-hava-durumu-debug-apk
+          name: meccanen-habit-tracker-debug-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 30
       - name: Release AAB kaydet
@@ -299,6 +235,6 @@ jobs:
         if: ${{ env.HAS_RELEASE_KEYSTORE == 'true' }}
         uses: actions/upload-artifact@v4
         with:
-          name: meccanen-hava-durumu-release-aab
+          name: meccanen-habit-tracker-release-aab
           path: android/app/build/outputs/bundle/release/app-release.aab
           retention-days: 30

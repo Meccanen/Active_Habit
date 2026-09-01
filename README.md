@@ -1,22 +1,26 @@
-# Meccanen Hava Durumu (Reklamsız)
+# Meccanen Habit Tracker
 
-Meccanen Namaz Vakti'nin çerçevesi (tema sistemi, dil desteği, konum yönetimi,
-Destekçi Rozeti) korunarak oluşturulan reklamsız hava durumu uygulaması.
-Saatlik ve 7 günlük tahmin **Open-Meteo**'dan alınıyor (key gerektirmiyor,
-namaz vaktindeki geocoding ile aynı sağlayıcı ailesi).
+Meccanen Namaz Vakti / Hava Durumu'nun çerçevesi (16 tema, 5 dil desteği,
+font ölçeği, Destekçi Rozeti) korunarak oluşturulan **yerel (localStorage)**
+alışkanlık takip uygulaması. Veri telefonda kalır, internet gerekmez.
 
-⚠️ Open-Meteo'nun ücretsiz katmanı **ticari olmayan kullanım** için ve
-günde 10.000 / saatte 5.000 / dakikada 600 çağrı limitli
-(https://open-meteo.com/en/terms). Kullanıcı sayısı büyüdükçe (kabaca birkaç
-bin aktif kullanıcı sonrası) bu limitlere takılma ihtimali var — o noktada
-ya paid plan (Standard $29/ay, 1M çağrı/ay) ya da kendi VPS'inde bir cache
-proxy (n8n ile şehir başına 10-15 dakikada bir Open-Meteo'yu çağırıp
-sonucu önbelleğe alan basit bir endpoint) kurulması gerekecek.
+## Özellikler
+
+- **Günlük alışkanlık takibi** — kontrol listesi, hedef (günde kaç kez) ve
+  seri (streak) sayacı
+- **Hazır Challenge'lar** — 7 / 21 / 75 gün, ana ekranda öne çıkan kartlar
+- **Özel Challenge** — kendi adını, süresini ve hedefini belirle
+- **Gizli mazeret hakkı** — bir gün kaçırılırsa challenge affedilir ve kullanıcı
+  uyarılır; ikinci kaçırmada challenge sıfırlanır
+- **İstatistik** — haftalık/aylık tamamlanma, en uzun seri, son 7 gün grafiği
+- **Takvim** — aylık ızgara, geçmiş günlere de giriş yapılabilir
+- **16 tema** + 5 dil (Türkçe, İngilizce, Almanca, Arapça, Urduca) + RTL desteği
+- **Büyük puntolu font ölçeği** (Normal / Büyük / Çok Büyük)
 
 ## GitHub'a yükleme sırası
 
-1. Bu klasördeki tüm dosya ve klasörleri repo köküne (`Reklamsiz_Hava_Durumu`) yükle,
-   klasör yapısını birebir koru (`src/`, `local-plugins/`, `.github/workflows/`).
+1. Bu klasördeki tüm dosya ve klasörleri repo köküne yükle, klasör yapısını
+   birebir koru (`src/`, `local-plugins/`, `.github/workflows/`).
 2. **public/meccanen-logo.png** dosyasını ekle (1024×1024 PNG, şeffaf zemin) —
    workflow ikon üretimi için bu dosyayı arıyor, yoksa build hata verir.
 3. (İsteğe bağlı, imzalı AAB için) `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`,
@@ -25,12 +29,17 @@ sonucu önbelleğe alan basit bir endpoint) kurulması gerekecek.
 4. **Actions** sekmesinden workflow'u tetikle (`workflow_dispatch`) veya `main`
    dalına push yaparak otomatik build'i başlat.
 
+> Reklam secret'ları (`ADMOB_*`) şu an **opsiyonel** — app'in `App.tsx`
+> içindeki `CUSTOM_CHALLENGE_REWARD` / `SHOW_BANNER_ADS` bayrakları kapalı
+> olduğu için reklam gösterilmez. İleride açmak istediğinde bayrakları `true`
+> yapıp secret'ları eklemen yeterli.
+
 ## Bilinçli olarak henüz eklenmedi
 
-- Ana ekranın nihai görsel tasarımı (şu an fonksiyonel ama sade bir arayüz var,
-  namaz vaktindeki gibi zenginleştirilecek)
 - Play Console ürün ID'leri (`billingService.ts` içinde `SUPPORTER_PRODUCT_IDS`
-  namaz vaktindeki ID'lerle aynı — yeni appId için Play Console'da yeni ürünler
-  oluşturulup ID'ler burada güncellenmeli)
+  örnek ID'lerle dolu — yeni appId için Play Console'da ürünler oluşturulup
+  buradan güncellenmeli)
 - App ikonu / feature graphic
-- Gizlilik politikası sayfası (TR/EN)
+- Gizlilik politikası sayfası (TR/EN) — uygulama yerel çalıştığı için zorunlu
+  değil ama Play Store isteyebilir# Active_Habit
+# Active_Habit
