@@ -83,14 +83,20 @@ jobs:
           }
           GRADLEEOF
           cat android/variables.gradle
-      - name: AdMob App ID'yi Manifest'e ekle
+      - name: AdMob App ID'yi Manifest'e ekle (zorunlu - eksikse app açılışta çöker)
         env:
           ADMOB_APP_ID: ${{ secrets.ADMOB_APP_ID }}
         run: |
           if [ -z "$ADMOB_APP_ID" ]; then
-            echo ">>> UYARI: ADMOB_APP_ID secret'ı tanımlı değil. Reklam özellikleri kapalıyken gerekmez (opsiyonel)."
+            echo ">>> UYARI: ADMOB_APP_ID secret'ı tanımlı değil."
+            echo ">>> play-services-ads'in MobileAdsInitProvider'ı çökmemesi için"
+            echo ">>> Google'ın resmi TEST App ID'si manifest'e yazılacak (reklamlar JS tarafında kapalı)."
+            echo ">>> Gerçek reklam için: Repo Settings > Secrets and variables > Actions > ADMOB_APP_ID ekle."
+            export ADMOB_APP_ID="ca-app-pub-3940256099942544~3347511713"
           else
-            cat > /tmp/add_admob.py << 'PYEOF'
+            echo ">>> ADMOB_APP_ID secret'ı kullanılıyor (değer loglanmıyor)."
+          fi
+          cat > /tmp/add_admob.py << 'PYEOF'
           import os, re
           path = "android/app/src/main/AndroidManifest.xml"
           app_id = os.environ["ADMOB_APP_ID"]
@@ -115,10 +121,9 @@ jobs:
           else:
               print(">>> AdMob App ID meta-data zaten mevcut, dokunulmadı.")
           PYEOF
-            python3 /tmp/add_admob.py
-            echo "--- AndroidManifest.xml (AdMob App ID eklendikten sonra) ---"
-            cat android/app/src/main/AndroidManifest.xml
-          fi
+          python3 /tmp/add_admob.py
+          echo "--- AndroidManifest.xml (AdMob App ID eklendikten sonra) ---"
+          cat android/app/src/main/AndroidManifest.xml
       - name: Version Code'u otomatik artır
         run: |
           NEW_VERSION_CODE=${{ github.run_number }}
