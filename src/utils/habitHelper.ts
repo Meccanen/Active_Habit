@@ -172,7 +172,7 @@ export function getMonthCells(
   today: string
 ): DayCell[] {
   const first = new Date(year, month - 1, 1);
-  const startOffset = first.getDay();
+  const startOffset = (first.getDay() + 6) % 7; // 0=Pazartesi ... 6=Pazar (hafta Pazartesi başlar)
   const daysInMonth = new Date(year, month, 0).getDate();
   const lastDate = new Date(year, month - 1, daysInMonth);
   const active = habits.filter((h) => !h.archived);

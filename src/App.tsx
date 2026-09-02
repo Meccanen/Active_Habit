@@ -431,7 +431,8 @@ function HabitModal({ existing, onSave, onClose, th, lang }: {
     });
   };
 
-  const weekdayKeys = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
+  const weekdayKeys = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
+  const weekdayDayValue: number[] = [1, 2, 3, 4, 5, 6, 0];
 
   return (
     <Modal onClose={onClose} th={th}>
@@ -486,8 +487,8 @@ function HabitModal({ existing, onSave, onClose, th, lang }: {
                 <p className={`text-xs uppercase tracking-wide mb-2 ${th.textMuted}`}>{t("selectDays", lang)}</p>
                 <div className="grid grid-cols-7 gap-1.5">
                   {weekdayKeys.map((k, i) => (
-                    <button key={k} onClick={() => toggleDay(i)}
-                      className={`h-10 rounded-xl text-xs font-semibold transition ${days.includes(i) ? th.accent + " bg-current/10 ring-1 " : th.card + " " + th.cardHover}`}>
+                    <button key={k} onClick={() => toggleDay(weekdayDayValue[i])}
+                      className={`h-10 rounded-xl text-xs font-semibold transition ${days.includes(weekdayDayValue[i]) ? th.accent + " bg-current/10 ring-1 " : th.card + " " + th.cardHover}`}>
                       {t(k, lang)}
                     </button>
                   ))}
@@ -876,7 +877,7 @@ function CalendarModal({ habits, logs, onToggle, onClose, th, lang }: {
   const monthLabel = new Intl.DateTimeFormat(intlLocale, { month: "long", year: "numeric" }).format(new Date(year, month - 1, 1));
 
   const cells = useMemo(() => getMonthCells(year, month, habits, logs, today), [year, month, habits, logs, today]);
-  const weekKeys = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
+  const weekKeys = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
   const active = getActiveHabits({ habits, logs, challenges: [] });
 
   const shift = (delta: number) => {
@@ -1432,8 +1433,8 @@ export default function App() {
                         <p className={`text-sm font-semibold truncate ${th.textPrimary}`}>{h.name}</p>
                         {h.frequency.kind === "weekly" && (
                           <div className="flex gap-0.5">
-                            {Array.from({ length: 7 }).map((_, i) => (
-                              <span key={i} className={`w-1.5 h-1.5 rounded-full ${h.frequency.days.includes(i) ? cc + " bg-current" : "bg-black/15"}`} />
+                            {[1, 2, 3, 4, 5, 6, 0].map((d) => (
+                              <span key={d} className={`w-1.5 h-1.5 rounded-full ${h.frequency.days.includes(d) ? cc + " bg-current" : "bg-black/15"}`} />
                             ))}
                           </div>
                         )}
@@ -1593,7 +1594,7 @@ export default function App() {
       {confirmDeleteHabit && (
         <Modal onClose={() => setConfirmDeleteHabit(null)} th={th}>
           <ModalHeader title={t("deleteHabitTitle", lang)} onClose={() => setConfirmDeleteHabit(null)} th={th} />
-          <div className="p-5 space-y-4">
+      <div className="flex-1 overflow-y-auto p-5 space-y-4">
             <p className={`text-sm ${th.textSecondary}`}>{t("deleteHabitDesc", lang)}</p>
             <div className="flex gap-2">
               <button onClick={() => setConfirmDeleteHabit(null)}
