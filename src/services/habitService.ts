@@ -82,7 +82,7 @@ export function loadState(): AppState {
     if (!raw) return { habits: [], logs: [], challenges: [] };
     const parsed = JSON.parse(raw) as AppState;
     return {
-      habits: parsed.habits ?? [],
+      habits: (parsed.habits ?? []).map((h) => ({ unit: "count", ...h }) as Habit),
       logs: parsed.logs ?? [],
       challenges: parsed.challenges ?? [],
     };
@@ -187,6 +187,7 @@ export function createChallengeFromTemplate(
     color: "accent",
     frequency: { kind: "daily" },
     targetPerDay: template.targetPerDay,
+    unit: "count",
     createdAt: todayStr(),
     archived: false,
     order: state.habits.length,
@@ -221,6 +222,7 @@ export function createCustomChallenge(
     color: opts.color,
     frequency: { kind: "daily" },
     targetPerDay: opts.targetPerDay,
+    unit: "count",
     createdAt: todayStr(),
     archived: false,
     order: state.habits.length,

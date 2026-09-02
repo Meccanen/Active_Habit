@@ -2,6 +2,8 @@ export type Frequency =
   | { kind: "daily" }
   | { kind: "weekly"; days: number[] }; // 0=Pazartesi değil, JS getDay() → 0=Pazar ... 6=Cumartesi
 
+export type Unit = "count" | "minutes";
+
 export interface Habit {
   id: string;
   name: string;
@@ -9,6 +11,8 @@ export interface Habit {
   color: string; // tema içinde kullanılacak renk anahtarı (accent familyası)
   frequency: Frequency;
   targetPerDay: number; // günde kaç kez hedef
+  unit: Unit; // hedef tipi: adet veya dakika
+  targetMinutes?: number; // süreli hedefler için hedef dakika (unit="minutes")
   createdAt: string; // YYYY-MM-DD
   archived: boolean;
   order: number;

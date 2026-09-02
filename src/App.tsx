@@ -5,7 +5,7 @@ import {
   BarChart3, Trophy, ChevronRight, ChevronLeft, Zap, Shield,
   Mail, Lock, Star,
 } from "lucide-react";
-import type { Habit, Challenge, ChallengeTemplate } from "./types";
+import type { Habit, Challenge, ChallengeTemplate, Unit } from "./types";
 import { t, detectLanguage, LangCode } from "./utils/i18n";
 import {
   HABIT_EMOJIS, HABIT_COLORS, CHALLENGE_TEMPLATES,
@@ -1221,11 +1221,12 @@ export default function App() {
   };
 
   const handleSaveHabit = (data: { name: string; emoji: string; color: string; frequency: Habit["frequency"]; targetPerDay: number }) => {
+    const habitData = { ...data, unit: "count" as Unit };
     if (editingHabit) {
-      setStateRaw((prev) => updateHabit(prev, editingHabit.id, data));
+      setStateRaw((prev) => updateHabit(prev, editingHabit.id, habitData));
       notify(t("saved", lang));
     } else {
-      setStateRaw((prev) => addHabit(prev, data));
+      setStateRaw((prev) => addHabit(prev, habitData));
       notify(t("added", lang));
     }
     setShowHabitModal(false);
