@@ -1112,6 +1112,34 @@ const formatTimer = (ms: number) => {
   return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
 };
 
+const playTimerChime = () => {
+  try {
+    const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    const ctx = new Ctx();
+    const play = (freq: number, start: number, dur: number) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.0001, ctx.currentTime + start);
+      gain.gain.exponentialRampToValueAtTime(0.6, ctx.currentTime + start + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + start + dur);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(ctx.currentTime + start);
+      osc.stop(ctx.currentTime + start + dur);
+    };
+    play(880, 0, 0.25);
+    play(1174, 0.22, 0.25);
+    play(1568, 0.44, 0.45);
+    setTimeout(() => ctx.close().catch(() => {}), 1500);
+  } catch {
+    /* ses desteklenmiyorsa sessiz devam */
+  }
+  try {
+    if (navigator.vibrate) navigator.vibrate([300, 150, 300]);
+  } catch { /* titresim desteklenmiyorsa sessiz */ }
+};
+
 export default function App() {
   const [themeKey, setThemeKey] = useState<ThemeKey>(() => {
     const saved = localStorage.getItem("mht_theme") as ThemeKey;
@@ -1147,6 +1175,7 @@ export default function App() {
   const [timerRunning, setTimerRunning] = useState(false);
   const [elapsedMs, setElapsedMs] = useState(0);
   const [timerStart, setTimerStart] = useState(0);
+  const [timerReached, setTimerReached] = useState(false);
 
   // stateRef her zaman en güncel state'i tutar; otomatik kaydetme effect'i
   // her değişiklikte localStorage'a yazar.
@@ -1161,11 +1190,24 @@ export default function App() {
   // Zamanlayıcı saniyeleri günceller (startTime tabanlı, arka planda doğru)
   useEffect(() => {
     if (!timerRunning) return;
+    const habit = timerFor ? habits.find((h) => h.id === timerFor) : null;
+    if (!habit || habit.unit !== "minutes") return;
+    const targetMs = (habit.targetPerDay || 1) * 60000;
     const iv = setInterval(() => {
-      setElapsedMs(Date.now() - timerStart);
-    }, 500);
+      const now = Date.now() - timerStart;
+      setElapsedMs(Math.min(now, targetMs));
+      if (now >= targetMs) {
+        clearInterval(iv);
+        setTimerRunning(false);
+        setElapsedMs(targetMs);
+        setTimerReached(true);
+        playTimerChime();
+        setTimeout(() => handleFinishTimer(targetMs), 400);
+      }
+    }, 200);
     return () => clearInterval(iv);
-  }, [timerRunning, timerStart]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timerRunning, timerStart, timerFor]);
 
   // ---- Modaller ----
   const [showSettings, setShowSettings] = useState(false);
@@ -1314,6 +1356,7 @@ export default function App() {
     const base = Date.now();
     setTimerStart(base);
     setElapsedMs(0);
+    setTimerReached(false);
     setTimerRunning(true);
   };
   const handlePauseTimer = () => {
@@ -1324,10 +1367,10 @@ export default function App() {
     setTimerStart(Date.now() - elapsedMs);
     setTimerRunning(true);
   };
-  const handleFinishTimer = () => {
+  const handleFinishTimer = (elapsed = elapsedMs) => {
     if (!timerFor) return;
     const habit = habits.find((h) => h.id === timerFor);
-    const minutes = Math.max(1, Math.round(elapsedMs / 60000));
+    const minutes = Math.max(1, Math.round(elapsed / 60000));
     setStateRaw((prev) => {
       const existing = prev.logs.find((l) => l.habitId === timerFor && l.date === today);
       const base = existing ? existing.count : 0;
@@ -1336,12 +1379,14 @@ export default function App() {
     setTimerFor(null);
     setTimerRunning(false);
     setElapsedMs(0);
+    setTimerReached(false);
     if (habit) notify(`${t("added", lang)} ⏱ ${minutes} ${t("minutes", lang)}`);
   };
   const handleResetTimer = () => {
     setTimerFor(null);
     setTimerRunning(false);
     setElapsedMs(0);
+    setTimerReached(false);
   };
 
   const hdrBtnBg = isLight(themeKey) ? "bg-black/5 border-black/10" : "bg-white/5 border-white/10";
@@ -1524,8 +1569,13 @@ export default function App() {
                         </div>
                       </div>
 
-                      <div className={`rounded-xl border p-3 ${th.card}`}>
-                        {timerFor === h.id && timerRunning && (
+                      <div className={`rounded-xl border p-3 ${th.card} ${timerFor === h.id && timerReached ? "border-green-500/60 animate-pulse" : ""}`}>
+                        {timerFor === h.id && timerReached && (
+                          <div className="flex items-center justify-center gap-2 mb-2 py-1">
+                            <span className={`font-bold text-base ${th.accent}`}>🎉 {t("timerDone", lang)}</span>
+                          </div>
+                        )}
+                        {timerFor === h.id && timerRunning && !timerReached && (
                           <div className="flex items-center justify-center gap-2 mb-2">
                             <span className={`font-mono text-lg font-bold tabular-nums ${th.accent}`}>
                               {formatTimer(elapsedMs)}
@@ -1533,8 +1583,21 @@ export default function App() {
                             <span className={`text-xs ${th.textMuted}`}>/ {h.targetPerDay} {t("minutes", lang)}</span>
                           </div>
                         )}
+                        {timerFor === h.id && !timerRunning && !timerReached && (
+                          <div className="flex items-center justify-center gap-2 mb-2">
+                            <span className={`font-mono text-lg font-bold tabular-nums ${th.textPrimary}`}>
+                              {formatTimer(elapsedMs)}
+                            </span>
+                            <span className={`text-xs ${th.textMuted}`}>/ {h.targetPerDay} {t("minutes", lang)}</span>
+                          </div>
+                        )}
                         <div className="flex items-center gap-2">
-                          {timerFor !== h.id ? (
+                          {timerReached ? (
+                            <button onClick={handleFinishTimer}
+                              className={`flex-1 py-2 rounded-xl text-sm font-bold border transition ${th.accent} animate-bounce`}>
+                              {t("finish", lang)}
+                            </button>
+                          ) : timerFor !== h.id ? (
                             <button onClick={() => handleStartTimer(h.id)} disabled={!info.due}
                               className={`flex-1 py-2 rounded-xl text-sm font-bold border transition ${cc} ${info.due ? "" : "opacity-40"}`}>
                               ▶ {t("startTimer", lang)}
@@ -1545,7 +1608,7 @@ export default function App() {
                                 className={`flex-[2] py-2 rounded-xl text-sm font-bold border transition ${th.card} ${th.textSecondary}`}>
                                 ⏸ {t("pause", lang)}
                               </button>
-                              <button onClick={handleFinishTimer} disabled={!info.due}
+                              <button onClick={() => handleFinishTimer()} disabled={!info.due}
                                 className={`flex-1 py-2 rounded-xl text-sm font-bold border transition ${th.accent} ${info.due ? "" : "opacity-40"}`}>
                                 {t("finish", lang)}
                               </button>
@@ -1556,7 +1619,7 @@ export default function App() {
                                 className={`flex-1 py-2 rounded-xl text-sm font-bold border transition ${th.accent}`}>
                                 ▶ {t("resume", lang)}
                               </button>
-                              <button onClick={handleFinishTimer} disabled={!info.due}
+                              <button onClick={() => handleFinishTimer()} disabled={!info.due}
                                 className={`flex-1 py-2 rounded-xl text-sm font-bold border transition ${th.card} ${info.due ? "" : "opacity-40"}`}>
                                 {t("finish", lang)}
                               </button>
