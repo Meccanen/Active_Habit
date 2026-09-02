@@ -37,12 +37,30 @@ export const CHALLENGE_TEMPLATES: ChallengeTemplate[] = [
     startCount: 1,
   },
   {
+    id: "c14_sprint",
+    emoji: "🏃",
+    nameKey: "template14",
+    days: 14,
+    targetPerDay: 1,
+    color: "text-violet-400",
+    startCount: 1,
+  },
+  {
     id: "c21_habit",
     emoji: "🌱",
     nameKey: "template21",
     days: 21,
     targetPerDay: 1,
     color: "text-emerald-400",
+    startCount: 1,
+  },
+  {
+    id: "c30_marathon",
+    emoji: "🔥",
+    nameKey: "template30",
+    days: 30,
+    targetPerDay: 1,
+    color: "text-amber-400",
     startCount: 1,
   },
   {
@@ -56,7 +74,7 @@ export const CHALLENGE_TEMPLATES: ChallengeTemplate[] = [
   },
 ];
 
-export const CHALLENGE_DAY_OPTIONS = [7, 21, 75] as const;
+export const CHALLENGE_DAY_OPTIONS = [7, 14, 21, 30, 75] as const;
 
 export function loadState(): AppState {
   try {

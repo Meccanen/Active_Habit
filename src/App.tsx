@@ -8,7 +8,7 @@ import {
 import type { Habit, Challenge, ChallengeTemplate } from "./types";
 import { t, detectLanguage, LangCode } from "./utils/i18n";
 import {
-  HABIT_EMOJIS, HABIT_COLORS, CHALLENGE_TEMPLATES, CHALLENGE_DAY_OPTIONS,
+  HABIT_EMOJIS, HABIT_COLORS, CHALLENGE_TEMPLATES,
   loadState, saveState, addHabit, updateHabit, deleteHabit,
   toggleLog, createChallengeFromTemplate, createCustomChallenge,
   deleteChallenge, toggleChallengeDay,
@@ -580,7 +580,7 @@ function ChallengePicker({ onPickTemplate, onCustom, onClose, th, lang, customUn
               <div className="flex-1 min-w-0">
                 <p className={`font-semibold text-sm ${th.textPrimary}`}>{t(tpl.nameKey, lang)}</p>
                 <p className={`text-xs mt-0.5 ${th.textMuted}`}>
-                  {t(tpl.nameKey === "template7" ? "template7Desc" : tpl.nameKey === "template21" ? "template21Desc" : "template75Desc", lang)}
+                  {t(`${tpl.nameKey}Desc`, lang)}
                 </p>
               </div>
               <span className={`shrink-0 text-xs font-bold px-3 py-1.5 rounded-full border ${th.accent} ${th.card}`}>
@@ -668,12 +668,10 @@ function CustomChallengeModal({ onSave, onClose, th, lang }: {
 }) {
   const [name, setName] = useState("");
   const [emoji, setEmoji] = useState("🎯");
-  const [days, setDays] = useState<number>(21);
   const [customDays, setCustomDays] = useState("30");
   const [startDate, setStartDate] = useState(todayStr());
   const [target, setTarget] = useState("1");
   const [color, setColor] = useState("accent");
-  const showCustomDays = !(CHALLENGE_DAY_OPTIONS as readonly number[]).includes(days);
 
   return (
     <Modal onClose={onClose} th={th}>
@@ -697,27 +695,12 @@ function CustomChallengeModal({ onSave, onClose, th, lang }: {
         </div>
         <div>
           <p className={`text-xs uppercase tracking-wide mb-2 ${th.textMuted}`}>{t("daysTotal", lang).replace("{n}", "").trim()}</p>
-          <div className="flex flex-wrap gap-2">
-            {[...CHALLENGE_DAY_OPTIONS, 0].map((d) =>
-              d === 0 ? (
-                <button key="custom" onClick={() => setDays(0)}
-                  className={`px-4 py-2.5 rounded-xl text-sm font-semibold border transition ${!showCustomDays ? "" : th.accent + " ring-2 ring-offset-2 " + th.accent} ${showCustomDays ? "" : th.card + " " + th.cardHover}`}>
-                  ✏️
-                </button>
-              ) : (
-                <button key={d} onClick={() => setDays(d)}
-                  className={`px-4 py-2.5 rounded-xl text-sm font-semibold border transition ${days === d ? th.accent + " ring-2 ring-offset-2 " + th.accent : th.card + " " + th.cardHover}`}>
-                  {t(`days${d}`, lang)}
-                </button>
-              )
-            )}
-          </div>
-          <div className="h-[56px]">
-            {showCustomDays && (
-              <input type="text" inputMode="numeric" pattern="[0-9]*" min={3} max={365} value={customDays}
-                onChange={(e) => setCustomDays(e.target.value.replace(/[^0-9]/g, ""))}
-                className={`w-28 px-4 py-2.5 rounded-xl border bg-transparent text-sm outline-none ${th.card} ${th.textPrimary}`} />
-            )}
+          <div className="flex items-center gap-2">
+            <span className="text-xl">✏️</span>
+            <input type="text" inputMode="numeric" pattern="[0-9]*" min={3} max={365} value={customDays}
+              onChange={(e) => setCustomDays(e.target.value.replace(/[^0-9]/g, ""))}
+              className={`w-28 px-4 py-2.5 rounded-xl border bg-transparent text-sm outline-none ${th.card} ${th.textPrimary}`} />
+            <span className={`text-sm ${th.textMuted}`}>{t("days", lang)}</span>
           </div>
         </div>
         <div className="grid grid-cols-2 gap-3">
@@ -749,7 +732,7 @@ function CustomChallengeModal({ onSave, onClose, th, lang }: {
         <button onClick={() => onSave({
           name: name.trim(),
           emoji,
-          totalDays: showCustomDays ? Math.max(3, parseInt(customDays, 10) || 30) : days,
+          totalDays: Math.max(3, parseInt(customDays, 10) || 30),
           startDate,
           targetPerDay: Math.max(1, parseInt(target, 10) || 1),
           color,
@@ -1408,7 +1391,76 @@ export default function App() {
           </div>
         </section>
 
-        {/* Challenge'lar — öne çıkan kart */}
+        {/* Alışkanlıklar */}
+        <section className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className={`font-bold text-lg ${th.textPrimary}`}>{t("habitsTitle", lang)}</h2>
+            <button onClick={() => { setEditingHabit(null); setShowHabitModal(true); }}
+              className={`inline-flex items-center gap-1.5 h-[40px] px-4 rounded-full border text-sm font-bold ${th.accent} ${hdrBtnBg} active:scale-95 transition`}>
+              <Plus size={16} /> {t("addHabit", lang)}
+            </button>
+          </div>
+
+          {activeHabits.length === 0 && (
+            <div className={`rounded-3xl border-2 border-dashed p-6 text-center ${th.card}`}>
+              <p className="text-4xl">🌱</p>
+              <p className={`font-semibold text-sm mt-2 ${th.textPrimary}`}>{t("noHabits", lang)}</p>
+              <p className={`text-xs mt-1 ${th.textMuted}`}>{t("noHabitsDesc", lang)}</p>
+            </div>
+          )}
+
+          <div className="space-y-2.5">
+            {activeHabits.map((h) => {
+              const info = habitLogFor(h, logs, today);
+              const streak = getCurrentStreak(h, logs, today);
+              const cc = colorClass(h, th);
+              return (
+                <motion.div key={h.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+                  className={`rounded-2xl border p-4 ${th.card}`}>
+                  <div className="flex items-center gap-3">
+                    <button onClick={() => handleToggleHabit(h.id, today)} disabled={!info.due}
+                      className={`shrink-0 w-10 h-10 rounded-xl border flex items-center justify-center transition active:scale-90 ${cc} ${info.due ? "" : "opacity-40"}`}
+                      style={info.complete ? { background: "currentColor" } : undefined}>
+                      {info.complete ? (
+                        <Check size={20} className="text-slate-950" />
+                      ) : (
+                        <span className="text-lg">{h.emoji}</span>
+                      )}
+                    </button>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className={`text-sm font-semibold truncate ${th.textPrimary}`}>{h.name}</p>
+                        {h.frequency.kind === "weekly" && (
+                          <div className="flex gap-0.5">
+                            {Array.from({ length: 7 }).map((_, i) => (
+                              <span key={i} className={`w-1.5 h-1.5 rounded-full ${h.frequency.days.includes(i) ? cc + " bg-current" : "bg-black/15"}`} />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3 mt-0.5">
+                        <span className={`flex items-center gap-1 text-xs font-semibold ${streak > 0 ? "text-orange-400" : th.textMuted}`}>
+                          <Flame size={13} /> {t("streakDays", lang, { n: String(streak) })}
+                        </span>
+                        {h.targetPerDay > 1 && (
+                          <span className={`text-xs ${th.textMuted}`}>{info.count}/{h.targetPerDay}</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button onClick={() => { setEditingHabit(h); setShowHabitModal(true); }}
+                        className={`p-2 rounded-xl ${th.cardHover} ${th.textMuted}`}><Pencil size={16} /></button>
+                      <button onClick={() => setConfirmDeleteHabit(h)}
+                        className={`p-2 rounded-xl ${th.cardHover} text-red-500/70`}><Trash2 size={16} /></button>
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* Challenge'lar */}
         <section className="space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -1489,75 +1541,6 @@ export default function App() {
               ))}
             </div>
           )}
-        </section>
-
-        {/* Alışkanlıklar */}
-        <section className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className={`font-bold text-lg ${th.textPrimary}`}>{t("habitsTitle", lang)}</h2>
-            <button onClick={() => { setEditingHabit(null); setShowHabitModal(true); }}
-              className={`inline-flex items-center gap-1.5 h-[40px] px-4 rounded-full border text-sm font-bold ${th.accent} ${hdrBtnBg} active:scale-95 transition`}>
-              <Plus size={16} /> {t("addHabit", lang)}
-            </button>
-          </div>
-
-          {activeHabits.length === 0 && (
-            <div className={`rounded-3xl border-2 border-dashed p-6 text-center ${th.card}`}>
-              <p className="text-4xl">🌱</p>
-              <p className={`font-semibold text-sm mt-2 ${th.textPrimary}`}>{t("noHabits", lang)}</p>
-              <p className={`text-xs mt-1 ${th.textMuted}`}>{t("noHabitsDesc", lang)}</p>
-            </div>
-          )}
-
-          <div className="space-y-2.5">
-            {activeHabits.map((h) => {
-              const info = habitLogFor(h, logs, today);
-              const streak = getCurrentStreak(h, logs, today);
-              const cc = colorClass(h, th);
-              return (
-                <motion.div key={h.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
-                  className={`rounded-2xl border p-4 ${th.card}`}>
-                  <div className="flex items-center gap-3">
-                    <button onClick={() => handleToggleHabit(h.id, today)} disabled={!info.due}
-                      className={`shrink-0 w-10 h-10 rounded-xl border flex items-center justify-center transition active:scale-90 ${cc} ${info.due ? "" : "opacity-40"}`}
-                      style={info.complete ? { background: "currentColor" } : undefined}>
-                      {info.complete ? (
-                        <Check size={20} className="text-slate-950" />
-                      ) : (
-                        <span className="text-lg">{h.emoji}</span>
-                      )}
-                    </button>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className={`text-sm font-semibold truncate ${th.textPrimary}`}>{h.name}</p>
-                        {h.frequency.kind === "weekly" && (
-                          <div className="flex gap-0.5">
-                            {Array.from({ length: 7 }).map((_, i) => (
-                              <span key={i} className={`w-1.5 h-1.5 rounded-full ${h.frequency.days.includes(i) ? cc + " bg-current" : "bg-black/15"}`} />
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-3 mt-0.5">
-                        <span className={`flex items-center gap-1 text-xs font-semibold ${streak > 0 ? "text-orange-400" : th.textMuted}`}>
-                          <Flame size={13} /> {t("streakDays", lang, { n: String(streak) })}
-                        </span>
-                        {h.targetPerDay > 1 && (
-                          <span className={`text-xs ${th.textMuted}`}>{info.count}/{h.targetPerDay}</span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <button onClick={() => { setEditingHabit(h); setShowHabitModal(true); }}
-                        className={`p-2 rounded-xl ${th.cardHover} ${th.textMuted}`}><Pencil size={16} /></button>
-                      <button onClick={() => setConfirmDeleteHabit(h)}
-                        className={`p-2 rounded-xl ${th.cardHover} text-red-500/70`}><Trash2 size={16} /></button>
-                    </div>
-                  </div>
-                </motion.div>
-              );
-            })}
-          </div>
         </section>
 
         <p className={`text-center text-xs ${th.textMuted} pt-2 pb-4`}>{t("tagline", lang)}</p>
