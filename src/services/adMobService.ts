@@ -18,11 +18,16 @@ import {
  *
  * NOT: Ad Unit ID derleme zamanında VITE_ADMOB_BANNER_ID ortam değişkeninden
  * gelir (bkz. .github/workflows/build-apk.yml — ADMOB_BANNER_ID secret'ı).
+ * Tanımlı değilse Google'ın resmi paylaşımlı TEST banner ad unit'i
+ * (ca-app-pub-3940256099942544/6300978111) kullanılır — bu ID ile AdMob
+ * otomatik test modunda çalışır, gerçek hesap/reklam gerekmez ve tıklamalar
+ * güvenlidir. Gerçek reklam ID'si secret olarak eklendiğinde otomatik olarak
+ * test ID'sinin yerini alır.
  * AdMob App ID ise JS tarafında kullanılmaz; sadece native
  * AndroidManifest.xml'e meta-data olarak enjekte edilir (yine CI'da).
  */
 
-const BANNER_AD_UNIT_ID = import.meta.env.VITE_ADMOB_BANNER_ID;
+const BANNER_AD_UNIT_ID = import.meta.env.VITE_ADMOB_BANNER_ID || 'ca-app-pub-3940256099942544/6300978111';
 const REWARDED_INTERSTITIAL_AD_UNIT_ID = import.meta.env.VITE_ADMOB_REWARDED_INTERSTITIAL_ID;
 
 // Virgülle ayrılmış test cihaz ID listesi (opsiyonel). Boşsa normal üretim
@@ -74,10 +79,6 @@ export async function initializeAds(): Promise<void> {
  * ÇAĞRILMAMALI — çağıran taraf (App.tsx) bu kontrolü yapar.
  */
 export async function showBannerAd(): Promise<void> {
-  if (!BANNER_AD_UNIT_ID) {
-    console.warn('[adMobService] VITE_ADMOB_BANNER_ID tanımlı değil, banner atlanıyor.');
-    return;
-  }
   if (bannerVisible) return;
 
   await initializeAds();

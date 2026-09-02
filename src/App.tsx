@@ -218,12 +218,12 @@ const isLight = (key: ThemeKey) => (["seher","gul","nane","vaha","nilufer","lava
 const APP_VERSION = "0.1.0";
 
 /**
- * Reklam özellikleri şu an kapalı. İleride açılacak:
+ * Reklam özellikleri:
  * - CUSTOM_CHALLENGE_REWARD: özel challenge oluşturmak için ödüllü reklam izletecek.
  * - SHOW_BANNER_ADS: ana ekranda altta banner reklam gösterecek.
  */
 const CUSTOM_CHALLENGE_REWARD = false;
-const SHOW_BANNER_ADS = false;
+const SHOW_BANNER_ADS = true;
 
 /** Habit rengi → tema sınıfı çevirici (accent ailesi temaya bağımlı). */
 function colorClass(habit: Habit, th: typeof THEMES[ThemeKey]): string {
