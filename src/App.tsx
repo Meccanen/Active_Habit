@@ -11,7 +11,7 @@ import {
   HABIT_EMOJIS, HABIT_COLORS, CHALLENGE_TEMPLATES,
   loadState, saveState, addHabit, updateHabit, deleteHabit,
   toggleLog, createChallengeFromTemplate, createCustomChallenge,
-  deleteChallenge, toggleChallengeDay,
+  deleteChallenge, toggleChallengeDay, setLogCount,
   getActiveHabits, habitLogFor,
 } from "./services/habitService";
 import {
@@ -402,7 +402,7 @@ function ProgressRing({ pct, size = 92, stroke = 9, className }: {
 // ============================================================================
 function HabitModal({ existing, onSave, onClose, th, lang }: {
   existing: Habit | null;
-  onSave: (h: { name: string; emoji: string; color: string; frequency: Habit["frequency"]; targetPerDay: number }) => void;
+  onSave: (h: { name: string; emoji: string; color: string; frequency: Habit["frequency"]; targetPerDay: number; unit: Unit }) => void;
   onClose: () => void; th: typeof THEMES[ThemeKey]; lang: LangCode;
 }) {
   const [step, setStep] = useState(1);
@@ -414,6 +414,7 @@ function HabitModal({ existing, onSave, onClose, th, lang }: {
     existing?.frequency.kind === "weekly" ? existing.frequency.days : [1, 2, 3, 4, 5]
   );
   const [target, setTarget] = useState(String(existing?.targetPerDay || 1));
+  const [unit, setUnit] = useState<Unit>(existing?.unit || "count");
 
   const canNext = step === 1 ? name.trim().length > 0 : true;
 
@@ -427,7 +428,8 @@ function HabitModal({ existing, onSave, onClose, th, lang }: {
       emoji,
       color,
       frequency: freqKind === "daily" ? { kind: "daily" } : { kind: "weekly", days: days.length ? days : [1] },
-      targetPerDay: Math.max(1, parseInt(target, 10) || 1),
+      targetPerDay: Math.max(1, parseInt(target, 10) || (unit === "minutes" ? 30 : 1)),
+      unit,
     });
   };
 
@@ -502,11 +504,21 @@ function HabitModal({ existing, onSave, onClose, th, lang }: {
           <div className="space-y-4 animate-fadeIn">
             <div>
               <p className={`text-xs uppercase tracking-wide mb-2 ${th.textMuted}`}>{t("targetPerDay", lang)}</p>
+              <div className="grid grid-cols-2 gap-2 mb-3">
+                <button onClick={() => setUnit("count")}
+                  className={`px-4 py-2.5 rounded-xl text-sm font-semibold border transition ${unit === "count" ? th.accent + " ring-2 ring-offset-2 " + th.accent : th.card + " " + th.cardHover}`}>
+                  {t("unitCount", lang)}
+                </button>
+                <button onClick={() => setUnit("minutes")}
+                  className={`px-4 py-2.5 rounded-xl text-sm font-semibold border transition ${unit === "minutes" ? th.accent + " ring-2 ring-offset-2 " + th.accent : th.card + " " + th.cardHover}`}>
+                  ⏱ {t("unitMinutes", lang)}
+                </button>
+              </div>
               <div className="flex items-center gap-2">
-                <input type="text" inputMode="numeric" pattern="[0-9]*" min={1} max={99} value={target}
+                <input type="text" inputMode="numeric" pattern="[0-9]*" min={1} max={unit === "minutes" ? 1440 : 99} value={target}
                   onChange={(e) => setTarget(e.target.value.replace(/[^0-9]/g, ""))}
                   className={`w-24 px-4 py-3 rounded-xl border bg-transparent text-sm outline-none ${th.card} ${th.textPrimary}`} />
-                <span className={`text-sm ${th.textSecondary}`}>{t("timesPerDay", lang)}</span>
+                <span className={`text-sm ${th.textSecondary}`}>{unit === "minutes" ? t("minutesPerDay", lang) : t("timesPerDay", lang)}</span>
               </div>
             </div>
             <div>
@@ -526,7 +538,7 @@ function HabitModal({ existing, onSave, onClose, th, lang }: {
                 <div className="flex-1 min-w-0">
                   <p className={`text-sm font-semibold truncate ${th.textPrimary}`}>{name || t("habitName", lang)}</p>
                   <p className={`text-xs ${th.textMuted}`}>
-                    {freqKind === "daily" ? t("daily", lang) : `${days.length} ${t("weekly", lang).toLowerCase()}`} · {Math.max(1, parseInt(target, 10) || 1)} {t("times", lang)}
+                    {freqKind === "daily" ? t("daily", lang) : `${days.length} ${t("weekly", lang).toLowerCase()}`} · {Math.max(1, parseInt(target, 10) || 1)} {unit === "minutes" ? t("minutes", lang) : t("times", lang)}
                   </p>
                 </div>
               </div>
@@ -1090,6 +1102,16 @@ function GraceModal({ usedGraceChallenges, resetChallenges, completedChallenges,
 // ============================================================================
 // ANA UYGULAMA
 // ============================================================================
+const formatTimer = (ms: number) => {
+  const total = Math.floor(ms / 1000);
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  const mm = String(m).padStart(2, "0");
+  const ss = String(s).padStart(2, "0");
+  return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
+};
+
 export default function App() {
   const [themeKey, setThemeKey] = useState<ThemeKey>(() => {
     const saved = localStorage.getItem("mht_theme") as ThemeKey;
@@ -1120,6 +1142,12 @@ export default function App() {
   const { habits, logs, challenges } = state;
   const [dayKey, setDayKey] = useState(today);
 
+  // ---- Zamanlayıcı (süreli habit'ler) ----
+  const [timerFor, setTimerFor] = useState<string | null>(null);
+  const [timerRunning, setTimerRunning] = useState(false);
+  const [elapsedMs, setElapsedMs] = useState(0);
+  const [timerStart, setTimerStart] = useState(0);
+
   // stateRef her zaman en güncel state'i tutar; otomatik kaydetme effect'i
   // her değişiklikte localStorage'a yazar.
   const stateRef = useRef(state);
@@ -1129,6 +1157,15 @@ export default function App() {
   }, [state]);
 
   const activeHabits = useMemo(() => getActiveHabits(state), [state]);
+
+  // Zamanlayıcı saniyeleri günceller (startTime tabanlı, arka planda doğru)
+  useEffect(() => {
+    if (!timerRunning) return;
+    const iv = setInterval(() => {
+      setElapsedMs(Date.now() - timerStart);
+    }, 500);
+    return () => clearInterval(iv);
+  }, [timerRunning, timerStart]);
 
   // ---- Modaller ----
   const [showSettings, setShowSettings] = useState(false);
@@ -1220,8 +1257,8 @@ export default function App() {
     runEvaluation();
   };
 
-  const handleSaveHabit = (data: { name: string; emoji: string; color: string; frequency: Habit["frequency"]; targetPerDay: number }) => {
-    const habitData = { ...data, unit: "count" as Unit };
+  const handleSaveHabit = (data: { name: string; emoji: string; color: string; frequency: Habit["frequency"]; targetPerDay: number; unit: Unit }) => {
+    const habitData = { ...data };
     if (editingHabit) {
       setStateRaw((prev) => updateHabit(prev, editingHabit.id, habitData));
       notify(t("saved", lang));
@@ -1269,6 +1306,42 @@ export default function App() {
     if (!challengeDetail) return;
     setStateRaw((prev) => toggleChallengeDay(prev, challengeDetail.id, date));
     runEvaluation();
+  };
+
+  // ---- Zamanlayıcı kontrolleri (süreli habit'ler) ----
+  const handleStartTimer = (habitId: string) => {
+    setTimerFor(habitId);
+    const base = Date.now();
+    setTimerStart(base);
+    setElapsedMs(0);
+    setTimerRunning(true);
+  };
+  const handlePauseTimer = () => {
+    setTimerRunning(false);
+  };
+  const handleResumeTimer = () => {
+    if (!timerFor) return;
+    setTimerStart(Date.now() - elapsedMs);
+    setTimerRunning(true);
+  };
+  const handleFinishTimer = () => {
+    if (!timerFor) return;
+    const habit = habits.find((h) => h.id === timerFor);
+    const minutes = Math.max(1, Math.round(elapsedMs / 60000));
+    setStateRaw((prev) => {
+      const existing = prev.logs.find((l) => l.habitId === timerFor && l.date === today);
+      const base = existing ? existing.count : 0;
+      return setLogCount(prev, timerFor, today, base + minutes);
+    });
+    setTimerFor(null);
+    setTimerRunning(false);
+    setElapsedMs(0);
+    if (habit) notify(`${t("added", lang)} ⏱ ${minutes} ${t("minutes", lang)}`);
+  };
+  const handleResetTimer = () => {
+    setTimerFor(null);
+    setTimerRunning(false);
+    setElapsedMs(0);
   };
 
   const hdrBtnBg = isLight(themeKey) ? "bg-black/5 border-black/10" : "bg-white/5 border-white/10";
@@ -1419,43 +1492,124 @@ export default function App() {
               return (
                 <motion.div key={h.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
                   className={`rounded-2xl border p-4 ${th.card}`}>
-                  <div className="flex items-center gap-3">
-                    <button onClick={() => handleToggleHabit(h.id, today)} disabled={!info.due}
-                      className={`shrink-0 w-10 h-10 rounded-xl border flex items-center justify-center transition active:scale-90 ${cc} ${info.due ? "" : "opacity-40"}`}
-                      style={info.complete ? { background: "currentColor" } : undefined}>
-                      {info.complete ? (
-                        <Check size={20} className="text-slate-950" />
-                      ) : (
-                        <span className="text-lg">{h.emoji}</span>
-                      )}
-                    </button>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className={`text-sm font-semibold truncate ${th.textPrimary}`}>{h.name}</p>
-                        {h.frequency.kind === "weekly" && (
-                          <div className="flex gap-0.5">
-                            {[1, 2, 3, 4, 5, 6, 0].map((d) => (
-                              <span key={d} className={`w-1.5 h-1.5 rounded-full ${h.frequency.days.includes(d) ? cc + " bg-current" : "bg-black/15"}`} />
-                            ))}
+                  {h.unit === "minutes" ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-3">
+                        <span className={`shrink-0 w-10 h-10 rounded-xl border flex items-center justify-center ${cc}`}>
+                          {info.complete ? <Check size={20} className="text-slate-950" /> : <span className="text-lg">{h.emoji}</span>}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className={`text-sm font-semibold truncate ${th.textPrimary}`}>{h.name}</p>
+                            {h.frequency.kind === "weekly" && (
+                              <div className="flex gap-0.5">
+                                {[1, 2, 3, 4, 5, 6, 0].map((d) => (
+                                  <span key={d} className={`w-1.5 h-1.5 rounded-full ${h.frequency.days.includes(d) ? cc + " bg-current" : "bg-black/15"}`} />
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-3 mt-0.5">
+                            <span className={`flex items-center gap-1 text-xs font-semibold ${streak > 0 ? "text-orange-400" : th.textMuted}`}>
+                              <Flame size={13} /> {t("streakDays", lang, { n: String(streak) })}
+                            </span>
+                            <span className={`text-xs ${th.textMuted}`}>{info.count} / {h.targetPerDay} {t("minutes", lang)}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button onClick={() => { setEditingHabit(h); setShowHabitModal(true); }}
+                            className={`p-2 rounded-xl ${th.cardHover} ${th.textMuted}`}><Pencil size={16} /></button>
+                          <button onClick={() => setConfirmDeleteHabit(h)}
+                            className={`p-2 rounded-xl ${th.cardHover} text-red-500/70`}><Trash2 size={16} /></button>
+                        </div>
+                      </div>
+
+                      <div className={`rounded-xl border p-3 ${th.card}`}>
+                        {timerFor === h.id && timerRunning && (
+                          <div className="flex items-center justify-center gap-2 mb-2">
+                            <span className={`font-mono text-lg font-bold tabular-nums ${th.accent}`}>
+                              {formatTimer(elapsedMs)}
+                            </span>
+                            <span className={`text-xs ${th.textMuted}`}>/ {h.targetPerDay} {t("minutes", lang)}</span>
                           </div>
                         )}
+                        <div className="flex items-center gap-2">
+                          {timerFor !== h.id ? (
+                            <button onClick={() => handleStartTimer(h.id)} disabled={!info.due}
+                              className={`flex-1 py-2 rounded-xl text-sm font-bold border transition ${cc} ${info.due ? "" : "opacity-40"}`}>
+                              ▶ {t("startTimer", lang)}
+                            </button>
+                          ) : timerRunning ? (
+                            <>
+                              <button onClick={handlePauseTimer}
+                                className={`flex-[2] py-2 rounded-xl text-sm font-bold border transition ${th.card} ${th.textSecondary}`}>
+                                ⏸ {t("pause", lang)}
+                              </button>
+                              <button onClick={handleFinishTimer} disabled={!info.due}
+                                className={`flex-1 py-2 rounded-xl text-sm font-bold border transition ${th.accent} ${info.due ? "" : "opacity-40"}`}>
+                                {t("finish", lang)}
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <button onClick={handleResumeTimer}
+                                className={`flex-1 py-2 rounded-xl text-sm font-bold border transition ${th.accent}`}>
+                                ▶ {t("resume", lang)}
+                              </button>
+                              <button onClick={handleFinishTimer} disabled={!info.due}
+                                className={`flex-1 py-2 rounded-xl text-sm font-bold border transition ${th.card} ${info.due ? "" : "opacity-40"}`}>
+                                {t("finish", lang)}
+                              </button>
+                            </>
+                          )}
+                          {timerFor === h.id && (
+                            <button onClick={handleResetTimer} title="reset"
+                              className={`p-2 rounded-xl ${th.cardHover} ${th.textMuted}`}><X size={16} /></button>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-3 mt-0.5">
-                        <span className={`flex items-center gap-1 text-xs font-semibold ${streak > 0 ? "text-orange-400" : th.textMuted}`}>
-                          <Flame size={13} /> {t("streakDays", lang, { n: String(streak) })}
-                        </span>
-                        {h.targetPerDay > 1 && (
-                          <span className={`text-xs ${th.textMuted}`}>{info.count}/{h.targetPerDay}</span>
+                    </div>
+                  ) : (
+                  <>
+                    <div className="flex items-center gap-3">
+                      <button onClick={() => handleToggleHabit(h.id, today)} disabled={!info.due}
+                        className={`shrink-0 w-10 h-10 rounded-xl border flex items-center justify-center transition active:scale-90 ${cc} ${info.due ? "" : "opacity-40"}`}
+                        style={info.complete ? { background: "currentColor" } : undefined}>
+                        {info.complete ? (
+                          <Check size={20} className="text-slate-950" />
+                        ) : (
+                          <span className="text-lg">{h.emoji}</span>
                         )}
+                      </button>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className={`text-sm font-semibold truncate ${th.textPrimary}`}>{h.name}</p>
+                          {h.frequency.kind === "weekly" && (
+                            <div className="flex gap-0.5">
+                              {[1, 2, 3, 4, 5, 6, 0].map((d) => (
+                                <span key={d} className={`w-1.5 h-1.5 rounded-full ${h.frequency.days.includes(d) ? cc + " bg-current" : "bg-black/15"}`} />
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-3 mt-0.5">
+                          <span className={`flex items-center gap-1 text-xs font-semibold ${streak > 0 ? "text-orange-400" : th.textMuted}`}>
+                            <Flame size={13} /> {t("streakDays", lang, { n: String(streak) })}
+                          </span>
+                          {h.targetPerDay > 1 && (
+                            <span className={`text-xs ${th.textMuted}`}>{info.count}/{h.targetPerDay}</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button onClick={() => { setEditingHabit(h); setShowHabitModal(true); }}
+                          className={`p-2 rounded-xl ${th.cardHover} ${th.textMuted}`}><Pencil size={16} /></button>
+                        <button onClick={() => setConfirmDeleteHabit(h)}
+                          className={`p-2 rounded-xl ${th.cardHover} text-red-500/70`}><Trash2 size={16} /></button>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <button onClick={() => { setEditingHabit(h); setShowHabitModal(true); }}
-                        className={`p-2 rounded-xl ${th.cardHover} ${th.textMuted}`}><Pencil size={16} /></button>
-                      <button onClick={() => setConfirmDeleteHabit(h)}
-                        className={`p-2 rounded-xl ${th.cardHover} text-red-500/70`}><Trash2 size={16} /></button>
-                    </div>
-                  </div>
+                  </>
+                  )}
                 </motion.div>
               );
             })}
