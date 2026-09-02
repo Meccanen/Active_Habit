@@ -897,7 +897,7 @@ function CalendarModal({ habits, logs, onToggle, onClose, th, lang }: {
         <button onClick={() => shift(1)} className={`p-2 rounded-full border ${th.card} ${th.textSecondary}`}><ChevronRight size={18} /></button>
       </div>
 
-      <div className="p-5 space-y-4">
+      <div className="flex-1 overflow-y-auto p-5 space-y-4">
         <div className="grid grid-cols-7 gap-1 text-center">
           {weekKeys.map((k) => (
             <span key={k} className={`text-[10px] font-semibold uppercase ${th.textMuted}`}>{t(k, lang)}</span>
@@ -1594,7 +1594,7 @@ export default function App() {
       {confirmDeleteHabit && (
         <Modal onClose={() => setConfirmDeleteHabit(null)} th={th}>
           <ModalHeader title={t("deleteHabitTitle", lang)} onClose={() => setConfirmDeleteHabit(null)} th={th} />
-      <div className="flex-1 overflow-y-auto p-5 space-y-4">
+          <div className="p-5 space-y-4">
             <p className={`text-sm ${th.textSecondary}`}>{t("deleteHabitDesc", lang)}</p>
             <div className="flex gap-2">
               <button onClick={() => setConfirmDeleteHabit(null)}
