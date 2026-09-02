@@ -413,7 +413,7 @@ function HabitModal({ existing, onSave, onClose, th, lang }: {
   const [days, setDays] = useState<number[]>(
     existing?.frequency.kind === "weekly" ? existing.frequency.days : [1, 2, 3, 4, 5]
   );
-  const [target, setTarget] = useState(existing?.targetPerDay || 1);
+  const [target, setTarget] = useState(String(existing?.targetPerDay || 1));
 
   const canNext = step === 1 ? name.trim().length > 0 : true;
 
@@ -427,7 +427,7 @@ function HabitModal({ existing, onSave, onClose, th, lang }: {
       emoji,
       color,
       frequency: freqKind === "daily" ? { kind: "daily" } : { kind: "weekly", days: days.length ? days : [1] },
-      targetPerDay: Math.max(1, target),
+      targetPerDay: Math.max(1, parseInt(target, 10) || 1),
     });
   };
 
@@ -502,8 +502,8 @@ function HabitModal({ existing, onSave, onClose, th, lang }: {
             <div>
               <p className={`text-xs uppercase tracking-wide mb-2 ${th.textMuted}`}>{t("targetPerDay", lang)}</p>
               <div className="flex items-center gap-2">
-                <input type="number" min={1} max={99} value={target}
-                  onChange={(e) => setTarget(Math.max(1, Number(e.target.value) || 1))}
+                <input type="text" inputMode="numeric" pattern="[0-9]*" min={1} max={99} value={target}
+                  onChange={(e) => setTarget(e.target.value.replace(/[^0-9]/g, ""))}
                   className={`w-24 px-4 py-3 rounded-xl border bg-transparent text-sm outline-none ${th.card} ${th.textPrimary}`} />
                 <span className={`text-sm ${th.textSecondary}`}>{t("timesPerDay", lang)}</span>
               </div>
@@ -525,7 +525,7 @@ function HabitModal({ existing, onSave, onClose, th, lang }: {
                 <div className="flex-1 min-w-0">
                   <p className={`text-sm font-semibold truncate ${th.textPrimary}`}>{name || t("habitName", lang)}</p>
                   <p className={`text-xs ${th.textMuted}`}>
-                    {freqKind === "daily" ? t("daily", lang) : `${days.length} ${t("weekly", lang).toLowerCase()}`} · {Math.max(1, target)} {t("times", lang)}
+                    {freqKind === "daily" ? t("daily", lang) : `${days.length} ${t("weekly", lang).toLowerCase()}`} · {Math.max(1, parseInt(target, 10) || 1)} {t("times", lang)}
                   </p>
                 </div>
               </div>
@@ -626,9 +626,9 @@ function CustomChallengeModal({ onSave, onClose, th, lang }: {
   const [name, setName] = useState("");
   const [emoji, setEmoji] = useState("🎯");
   const [days, setDays] = useState<number>(21);
-  const [customDays, setCustomDays] = useState(30);
+  const [customDays, setCustomDays] = useState("30");
   const [startDate, setStartDate] = useState(todayStr());
-  const [target, setTarget] = useState(1);
+  const [target, setTarget] = useState("1");
   const [color, setColor] = useState("accent");
   const showCustomDays = !(CHALLENGE_DAY_OPTIONS as readonly number[]).includes(days);
 
@@ -653,7 +653,7 @@ function CustomChallengeModal({ onSave, onClose, th, lang }: {
           </div>
         </div>
         <div>
-          <p className={`text-xs uppercase tracking-wide mb-2 ${th.textMuted}`}>{t("daysTotal", lang).replace("{n}", "")}</p>
+          <p className={`text-xs uppercase tracking-wide mb-2 ${th.textMuted}`}>{t("daysTotal", lang).replace("{n}", "").trim()}</p>
           <div className="flex flex-wrap gap-2">
             {[...CHALLENGE_DAY_OPTIONS, 0].map((d) =>
               d === 0 ? (
@@ -669,10 +669,13 @@ function CustomChallengeModal({ onSave, onClose, th, lang }: {
               )
             )}
           </div>
-          {showCustomDays && (
-            <input type="number" min={3} max={365} value={customDays} onChange={(e) => setCustomDays(Number(e.target.value) || 30)}
-              className={`mt-2 w-28 px-4 py-2.5 rounded-xl border bg-transparent text-sm outline-none ${th.card} ${th.textPrimary}`} />
-          )}
+          <div className="h-[56px]">
+            {showCustomDays && (
+              <input type="text" inputMode="numeric" pattern="[0-9]*" min={3} max={365} value={customDays}
+                onChange={(e) => setCustomDays(e.target.value.replace(/[^0-9]/g, ""))}
+                className={`w-28 px-4 py-2.5 rounded-xl border bg-transparent text-sm outline-none ${th.card} ${th.textPrimary}`} />
+            )}
+          </div>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
@@ -682,7 +685,8 @@ function CustomChallengeModal({ onSave, onClose, th, lang }: {
           </div>
           <div>
             <p className={`text-xs uppercase tracking-wide mb-2 ${th.textMuted}`}>{t("targetPerDay", lang)}</p>
-            <input type="number" min={1} max={99} value={target} onChange={(e) => setTarget(Math.max(1, Number(e.target.value) || 1))}
+            <input type="text" inputMode="numeric" pattern="[0-9]*" min={1} max={99} value={target}
+              onChange={(e) => setTarget(e.target.value.replace(/[^0-9]/g, ""))}
               className={`w-full px-3 py-2.5 rounded-xl border bg-transparent text-sm outline-none ${th.card} ${th.textPrimary}`} />
           </div>
         </div>
@@ -702,9 +706,9 @@ function CustomChallengeModal({ onSave, onClose, th, lang }: {
         <button onClick={() => onSave({
           name: name.trim(),
           emoji,
-          totalDays: showCustomDays ? Math.max(3, customDays) : days,
+          totalDays: showCustomDays ? Math.max(3, parseInt(customDays, 10) || 30) : days,
           startDate,
-          targetPerDay: Math.max(1, target),
+          targetPerDay: Math.max(1, parseInt(target, 10) || 1),
           color,
         })}
           className={`w-full py-3 rounded-xl text-sm font-bold border ${th.card} ${th.accent}`}>
