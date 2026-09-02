@@ -617,6 +617,49 @@ function ChallengePicker({ onPickTemplate, onCustom, onClose, th, lang, customUn
 }
 
 // ============================================================================
+// ŞABLON CHALLENGE ADI MODALI
+// ============================================================================
+function TemplateNameModal({ template, onSave, onClose, th, lang }: {
+  template: ChallengeTemplate;
+  onSave: (name: string) => void;
+  onClose: () => void; th: typeof THEMES[ThemeKey]; lang: LangCode;
+}) {
+  const [name, setName] = useState(t(template.nameKey, lang));
+
+  return (
+    <Modal onClose={onClose} th={th}>
+      <ModalHeader title={t("newChallenge", lang)} onClose={onClose} th={th} />
+      <div className="overflow-y-auto flex-1 p-5 space-y-4">
+        <div className={`rounded-2xl border p-4 ${th.card}`}>
+          <div className="flex items-center gap-3">
+            <span className="text-3xl">{template.emoji}</span>
+            <div className="flex-1 min-w-0">
+              <p className={`font-semibold text-sm ${th.textPrimary}`}>{t(template.nameKey, lang)}</p>
+              <p className={`text-xs mt-0.5 ${th.textMuted}`}>
+                {t(`days${template.days}`, lang)} · {template.targetPerDay} {t("timesPerDay", lang)}
+              </p>
+            </div>
+          </div>
+        </div>
+        <div>
+          <p className={`text-xs uppercase tracking-wide mb-2 ${th.textMuted}`}>{t("challengeName", lang)}</p>
+          <input value={name} onChange={(e) => setName(e.target.value)} autoFocus maxLength={60}
+            placeholder={t(template.nameKey, lang)}
+            className={`w-full px-4 py-3 rounded-xl border bg-transparent text-sm outline-none ${th.card} ${th.textPrimary}`} />
+          <p className={`text-xs mt-1.5 ${th.textMuted}`}>{t("challengeNameHint", lang)}</p>
+        </div>
+      </div>
+      <div className={`p-5 border-t ${th.header}`}>
+        <button onClick={() => onSave(name)}
+          className={`w-full py-3 rounded-xl text-sm font-bold border ${th.card} ${th.accent}`}>
+          {t("startChallenge", lang)}
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
+// ============================================================================
 // ÖZEL CHALLENGE MODALI
 // ============================================================================
 function CustomChallengeModal({ onSave, onClose, th, lang }: {
@@ -1109,6 +1152,7 @@ export default function App() {
   const [showHabitModal, setShowHabitModal] = useState(false);
   const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
   const [showChallengePicker, setShowChallengePicker] = useState(false);
+  const [templatePending, setTemplatePending] = useState<ChallengeTemplate | null>(null);
   const [showCustomModal, setShowCustomModal] = useState(false);
   const [challengeDetail, setChallengeDetail] = useState<Challenge | null>(null);
   const [showCalendar, setShowCalendar] = useState(false);
@@ -1204,9 +1248,12 @@ export default function App() {
     setEditingHabit(null);
   };
 
-  const handlePickTemplate = (tpl: ChallengeTemplate) => {
-    const next = createChallengeFromTemplate(stateRef.current, tpl, t(tpl.nameKey, lang), todayStr(), lang);
+  const handlePickTemplate = (tpl: ChallengeTemplate, name?: string) => {
+    const finalName = (name || "").trim() || t(tpl.nameKey, lang);
+    const next = createChallengeFromTemplate(stateRef.current, tpl, finalName, todayStr(), lang);
     setStateRaw(next);
+    setTemplatePending(null);
+    setShowChallengePicker(false);
     notify(t("startChallenge", lang));
   };
 
@@ -1529,9 +1576,15 @@ export default function App() {
 
       {showChallengePicker && (
         <ChallengePicker customUnlocked={customUnlocked}
-          onPickTemplate={(tpl) => { setShowChallengePicker(false); handlePickTemplate(tpl); }}
+          onPickTemplate={(tpl) => setTemplatePending(tpl)}
           onCustom={handleOpenCustom}
           onClose={() => setShowChallengePicker(false)} th={th} lang={lang} />
+      )}
+
+      {templatePending && (
+        <TemplateNameModal template={templatePending}
+          onSave={(name) => handlePickTemplate(templatePending, name)}
+          onClose={() => setTemplatePending(null)} th={th} lang={lang} />
       )}
 
       {showCustomModal && (

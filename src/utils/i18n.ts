@@ -1,7 +1,7 @@
 export type LangCode = "tr" | "en" | "ar" | "de" | "ur";
 
 const en: Record<string, string> = {
-  appName: "Habit Tracker",
+  appName: "Active Habit Tracker",
   tagline: "Small steps, big change",
   settings: "Settings",
   themeTab: "Theme",
@@ -101,6 +101,8 @@ const en: Record<string, string> = {
   days21: "21 days",
   days75: "75 days",
   startChallenge: "Start Challenge",
+  challengeName: "Challenge name",
+  challengeNameHint: "Give it a personal name to tell similar challenges apart.",
   selectTemplate: "Choose a template",
   startsOn: "Starts on",
   endsOn: "Ends on",
@@ -149,7 +151,7 @@ const en: Record<string, string> = {
 };
 
 const de: Record<string, string> = {
-  appName: "Gewohnheits-Tracker",
+  appName: "Active Habit Tracker",
   tagline: "Kleine Schritte, große Veränderung",
   settings: "Einstellungen",
   themeTab: "Thema",
@@ -244,6 +246,8 @@ const de: Record<string, string> = {
   days21: "21 Tage",
   days75: "75 Tage",
   startChallenge: "Herausforderung starten",
+  challengeName: "Name der Challenge",
+  challengeNameHint: "Gib ihr einen persönlichen Namen, um ähnliche Challenges zu unterscheiden.",
   selectTemplate: "Vorlage wählen",
   startsOn: "Beginnt am",
   endsOn: "Endet am",
@@ -290,7 +294,7 @@ const de: Record<string, string> = {
 };
 
 const tr: Record<string, string> = {
-  appName: "Alışkanlık Takibi",
+  appName: "Active Habit Tracker",
   tagline: "Küçük adımlar, büyük değişim",
   settings: "Ayarlar",
   themeTab: "Tema",
@@ -385,6 +389,8 @@ const tr: Record<string, string> = {
   days21: "21 gün",
   days75: "75 gün",
   startChallenge: "Challenge'ı Başlat",
+  challengeName: "Challenge adı",
+  challengeNameHint: "Benzer challenge'ları ayırt etmek için kişisel bir ad ver.",
   selectTemplate: "Bir şablon seç",
   startsOn: "Başlangıç",
   endsOn: "Bitiş",
@@ -431,7 +437,7 @@ const tr: Record<string, string> = {
 };
 
 const ar: Record<string, string> = {
-  appName: "متتبع العادات",
+  appName: "Active Habit Tracker",
   tagline: "خطوات صغيرة، تغيير كبير",
   settings: "الإعدادات",
   themeTab: "السمة",
@@ -526,6 +532,8 @@ const ar: Record<string, string> = {
   days21: "21 يومًا",
   days75: "75 يومًا",
   startChallenge: "بدء التحدي",
+  challengeName: "اسم التحدي",
+  challengeNameHint: "أعطِ التحدي اسمًا شخصيًا للتمييز بين التحديات المتشابهة.",
   selectTemplate: "اختر قالبًا",
   startsOn: "البداية",
   endsOn: "النهاية",
@@ -572,7 +580,7 @@ const ar: Record<string, string> = {
 };
 
 const ur: Record<string, string> = {
-  appName: "عادت ٹریکر",
+  appName: "Active Habit Tracker",
   tagline: "چھوٹے قدم، بڑی تبدیلی",
   settings: "ترتیبات",
   themeTab: "تھیم",
@@ -667,6 +675,8 @@ const ur: Record<string, string> = {
   days21: "21 دن",
   days75: "75 دن",
   startChallenge: "چیلنج شروع کریں",
+  challengeName: "چیلنج کا نام",
+  challengeNameHint: "ملتے جلتے چیلنجز میں فرق کرنے کے لیے اسے ذاتی نام دیں۔",
   selectTemplate: "ایک ٹیمپلیٹ منتخب کریں",
   startsOn: "شروع",
   endsOn: "اختتام",
