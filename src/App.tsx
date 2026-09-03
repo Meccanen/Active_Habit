@@ -1848,10 +1848,10 @@ export default function App() {
         <Modal onClose={() => setHabitSetPreview(null)} th={th}>
           <ModalHeader title={`${habitSetPreview.emoji} ${t(habitSetPreview.nameKey, lang)}`}
             onClose={() => setHabitSetPreview(null)} th={th} />
-          <div className="p-5 space-y-4">
+          <div className="p-5 space-y-4 flex flex-col min-h-0 flex-1">
             <p className={`text-xs ${th.textMuted}`}>{t(habitSetPreview.descKey, lang)}</p>
 
-            <div className="space-y-2 max-h-72 overflow-y-auto">
+            <div className="space-y-2 flex-1 min-h-0 overflow-y-auto">
               {habitSetPreview.habits.map((h, i) => (
                 <div key={i} className={`flex items-center gap-3 rounded-xl border p-3 ${th.card}`}>
                   <span className="text-2xl">{h.emoji}</span>
@@ -1870,7 +1870,7 @@ export default function App() {
 
             {isHabitSetAdded(state, habitSetPreview.id) ? (
               <button disabled
-                className={`w-full py-3 rounded-xl text-sm font-bold border ${th.card} text-green-500`}>
+                className={`w-full shrink-0 py-3 rounded-xl text-sm font-bold border ${th.card} text-green-500`}>
                 ✓ {t("habitSetAddedTag", lang)}
               </button>
             ) : (
@@ -1879,7 +1879,7 @@ export default function App() {
                 setHabitSetPreview(null);
                 notify(t("habitSetAdded", lang));
               }}
-                className={`w-full py-3 rounded-xl text-sm font-bold ${th.accent}`}>
+                className={`w-full shrink-0 py-3 rounded-xl text-sm font-bold ${th.accent}`}>
                 {t("habitSetAddBtn", lang)}
               </button>
             )}
