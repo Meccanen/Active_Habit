@@ -3,16 +3,16 @@ import { motion, AnimatePresence } from "motion/react";
 import {
   Check, Settings, Palette, X, Plus, Trash2, Pencil, Flame, Calendar,
   BarChart3, Trophy, ChevronRight, ChevronLeft, Zap, Shield,
-  Mail, Lock, Star,
+  Mail, Lock, Star, Sparkles,
 } from "lucide-react";
 import type { Habit, Challenge, ChallengeTemplate, Unit } from "./types";
 import { t, detectLanguage, LangCode } from "./utils/i18n";
 import {
-  HABIT_EMOJIS, HABIT_COLORS, CHALLENGE_TEMPLATES,
+  HABIT_EMOJIS, HABIT_COLORS, CHALLENGE_TEMPLATES, HABIT_SETS,
   loadState, saveState, addHabit, updateHabit, deleteHabit,
   toggleLog, createChallengeFromTemplate, createCustomChallenge,
   deleteChallenge, toggleChallengeDay, setLogCount,
-  getActiveHabits, habitLogFor,
+  getActiveHabits, habitLogFor, addHabitSet,
 } from "./services/habitService";
 import {
   todayStr, addDays, getCurrentStreak, getBestStreak,
@@ -1676,6 +1676,42 @@ export default function App() {
                 </motion.div>
               );
             })}
+          </div>
+        </section>
+
+        {/* Hazır alışkanlık setleri */}
+        <section className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Sparkles size={18} className={th.accent} />
+            <h2 className={`font-bold text-lg ${th.textPrimary}`}>{t("habitSetsTitle", lang)}</h2>
+          </div>
+          <p className={`text-xs ${th.textMuted} -mt-2`}>{t("habitSetsSub", lang)}</p>
+          <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
+            {HABIT_SETS.map((set) => (
+              <motion.button key={set.id} whileTap={{ scale: 0.97 }}
+                onClick={() => {
+                  const resolved: typeof set = {
+                    ...set,
+                    habits: set.habits.map((h) => ({ ...h, nameKey: t(h.nameKey, lang) })),
+                  };
+                  setStateRaw((prev) => addHabitSet(prev, resolved));
+                  notify(t("habitSetAdded", lang));
+                }}
+                className={`w-56 shrink-0 text-left rounded-3xl border p-4 shadow-xl transition ${th.card} ${th.cardHover} relative`}>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-3xl drop-shadow">{set.emoji}</span>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${th.cardHover}`}>
+                    <Plus size={16} className={th.accent} />
+                  </div>
+                </div>
+                <p className={`font-bold text-sm leading-tight ${th.textPrimary}`}>{t(set.nameKey, lang)}</p>
+                <p className={`text-[11px] leading-snug mt-1 ${th.textMuted}`}>{t(set.descKey, lang)}</p>
+                <div className={`flex items-center gap-1 mt-2 text-[11px] font-semibold ${th.textSecondary}`}>
+                  <span>{set.habits.length}</span>
+                  <span>{t("habitSetsItems", lang)}</span>
+                </div>
+              </motion.button>
+            ))}
           </div>
         </section>
 

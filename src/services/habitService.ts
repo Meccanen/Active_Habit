@@ -4,6 +4,7 @@ import type {
   ChallengeTemplate,
   Habit,
   HabitLog,
+  Unit,
 } from "../types";
 import { todayStr, evaluateChallenges, isHabitDue, getLogCount } from "../utils/habitHelper";
 
@@ -117,6 +118,101 @@ export function addHabit(state: AppState, habit: Omit<Habit, "id" | "createdAt" 
     order: state.habits.length,
   };
   return { ...state, habits: [...state.habits, h] };
+}
+
+// ---- Hazır alışkanlık setleri (şablon paketleri) -----------------------
+
+export interface HabitSetItem {
+  emoji: string;
+  nameKey: string; // i18n anahtarı (habit adı)
+  color: string;
+  unit: Unit;
+  targetPerDay: number;
+  frequency: Habit["frequency"];
+}
+
+export interface HabitSetTemplate {
+  id: string;
+  emoji: string;
+  nameKey: string; // i18n anahtarı (paket adı)
+  descKey: string; // i18n anahtarı (paket açıklaması)
+  color: string;
+  habits: HabitSetItem[];
+}
+
+export const HABIT_SETS: HabitSetTemplate[] = [
+  {
+    id: "set_morning",
+    emoji: "🌅",
+    nameKey: "setMorning",
+    descKey: "setMorningDesc",
+    color: "text-amber-400",
+    habits: [
+      { emoji: "💧", nameKey: "setMorning1", color: "text-sky-500", unit: "count", targetPerDay: 1, frequency: { kind: "daily" } },
+      { emoji: "🧘", nameKey: "setMorning2", color: "text-emerald-500", unit: "minutes", targetPerDay: 10, frequency: { kind: "daily" } },
+      { emoji: "✍️", nameKey: "setMorning3", color: "text-fuchsia-500", unit: "count", targetPerDay: 1, frequency: { kind: "daily" } },
+      { emoji: "🚶", nameKey: "setMorning4", color: "text-orange-500", unit: "minutes", targetPerDay: 15, frequency: { kind: "daily" } },
+      { emoji: "📵", nameKey: "setMorning5", color: "text-yellow-500", unit: "count", targetPerDay: 1, frequency: { kind: "daily" } },
+    ],
+  },
+  {
+    id: "set_fitness",
+    emoji: "💪",
+    nameKey: "setFitness",
+    descKey: "setFitnessDesc",
+    color: "text-red-400",
+    habits: [
+      { emoji: "🏃", nameKey: "setFitness1", color: "text-orange-500", unit: "minutes", targetPerDay: 30, frequency: { kind: "daily" } },
+      { emoji: "🚴", nameKey: "setFitness2", color: "text-sky-500", unit: "minutes", targetPerDay: 20, frequency: { kind: "weekly", days: [1, 3, 5] } },
+      { emoji: "💪", nameKey: "setFitness3", color: "text-red-500", unit: "count", targetPerDay: 3, frequency: { kind: "weekly", days: [1, 2, 4, 5] } },
+      { emoji: "🧘", nameKey: "setFitness4", color: "text-emerald-500", unit: "minutes", targetPerDay: 10, frequency: { kind: "daily" } },
+      { emoji: "😴", nameKey: "setFitness5", color: "text-violet-500", unit: "count", targetPerDay: 1, frequency: { kind: "daily" } },
+    ],
+  },
+  {
+    id: "set_productivity",
+    emoji: "🎯",
+    nameKey: "setProductivity",
+    descKey: "setProductivityDesc",
+    color: "text-sky-400",
+    habits: [
+      { emoji: "📖", nameKey: "setProductivity1", color: "text-sky-500", unit: "minutes", targetPerDay: 30, frequency: { kind: "daily" } },
+      { emoji: "✍️", nameKey: "setProductivity2", color: "text-fuchsia-500", unit: "count", targetPerDay: 1, frequency: { kind: "daily" } },
+      { emoji: "🎯", nameKey: "setProductivity3", color: "text-yellow-500", unit: "count", targetPerDay: 3, frequency: { kind: "daily" } },
+      { emoji: "📵", nameKey: "setProductivity4", color: "text-red-500", unit: "minutes", targetPerDay: 60, frequency: { kind: "weekly", days: [1, 2, 3, 4, 5] } },
+      { emoji: "🎨", nameKey: "setProductivity5", color: "text-emerald-500", unit: "count", targetPerDay: 1, frequency: { kind: "daily" } },
+    ],
+  },
+  {
+    id: "set_mind",
+    emoji: "🧠",
+    nameKey: "setMind",
+    descKey: "setMindDesc",
+    color: "text-emerald-400",
+    habits: [
+      { emoji: "🧘", nameKey: "setMind1", color: "text-emerald-500", unit: "minutes", targetPerDay: 15, frequency: { kind: "daily" } },
+      { emoji: "📖", nameKey: "setMind2", color: "text-sky-500", unit: "minutes", targetPerDay: 20, frequency: { kind: "daily" } },
+      { emoji: "✍️", nameKey: "setMind3", color: "text-fuchsia-500", unit: "count", targetPerDay: 1, frequency: { kind: "daily" } },
+      { emoji: "🚶", nameKey: "setMind4", color: "text-orange-500", unit: "minutes", targetPerDay: 20, frequency: { kind: "daily" } },
+      { emoji: "🙏", nameKey: "setMind5", color: "text-amber-500", unit: "count", targetPerDay: 1, frequency: { kind: "daily" } },
+    ],
+  },
+];
+
+/** Hazır bir setin içindeki tüm habit'leri tek seferde ekler. */
+export function addHabitSet(state: AppState, set: HabitSetTemplate): AppState {
+  return set.habits.reduce(
+    (acc, item) =>
+      addHabit(acc, {
+        name: item.nameKey,
+        emoji: item.emoji,
+        color: item.color,
+        unit: item.unit,
+        targetPerDay: item.targetPerDay,
+        frequency: item.frequency,
+      }),
+    state
+  );
 }
 
 export function updateHabit(state: AppState, id: string, patch: Partial<Habit>): AppState {
