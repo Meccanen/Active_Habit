@@ -19,6 +19,8 @@ import {
   todayStr, addDays, getCurrentStreak, getBestStreak,
   getTodayStats, getCompletionRate, getLastNDays, getMonthCells,
   getChallengeProgress, getChallengeEndDate, isHabitComplete, isHabitDue,
+  getMaxCurrentStreak, getHabitStreaks, getLongRangeDays,
+  getAverageRate, getMostConsistent,
 } from "./utils/habitHelper";
 import { evaluateChallenges } from "./utils/habitHelper";
 import {
@@ -1049,6 +1051,141 @@ function StatsModal({ habits, logs, onClose, th, lang }: {
 }
 
 // ============================================================================
+// GELİŞMİŞ İSTATİSTİKLER MODALI (uzun dönem grafik + ortalamalar + seriler)
+// Şu an reklamsız açılır; ödüllü reklam kilidi bu modalın ÖNÜNE sonra eklenir.
+// ============================================================================
+function DetailStatsModal({ habits, logs, onClose, th, lang }: {
+  habits: Habit[]; logs: Parameters<typeof habitLogFor>[1];
+  onClose: () => void; th: typeof THEMES[ThemeKey]; lang: LangCode;
+}) {
+  const today = todayStr();
+  const maxStreak = useMemo(() => getMaxCurrentStreak(habits, logs, today), [habits, logs, today]);
+  const last30 = useMemo(() => getLongRangeDays(habits, logs, 30, today), [habits, logs, today]);
+  const avg7 = useMemo(() => getAverageRate(habits, logs, 7, today), [habits, logs, today]);
+  const avg30 = useMemo(() => getAverageRate(habits, logs, 30, today), [habits, logs, today]);
+  const habitStreaks = useMemo(() => getHabitStreaks(habits, logs, today), [habits, logs, today]);
+  const consistent = useMemo(() => getMostConsistent(habits, logs, 30, today, 5), [habits, logs, today]);
+
+  const monthLabels = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
+  // Son 30 günü 6 sütuna böl (her biri 5 gün) — okunur uzun dönem grafiği
+  const buckets: { label: string; pct: number; done: number; due: number }[] = [];
+  for (let b = 0; b < 6; b++) {
+    const slice = last30.slice(b * 5, b * 5 + 5);
+    const due = slice.reduce((s, d) => s + d.due, 0);
+    const done = slice.reduce((s, d) => s + d.done, 0);
+    const fromDay = new Date(slice[0]?.date + "T00:00:00").getDate();
+    const isLast = b === 5;
+    let label: string;
+    if (isLast) {
+      label = t("todayTitle", lang);
+    } else {
+      const from = new Date((slice[0]?.date ?? today) + "T00:00:00");
+      label = t(monthLabels[from.getDay()], lang);
+    }
+    const _ = fromDay;
+    buckets.push({ label, pct: due === 0 ? 0 : Math.round((done / due) * 100), done, due });
+  }
+  const maxBucket = Math.max(1, ...buckets.map((b) => b.pct));
+
+  return (
+    <Modal onClose={onClose} th={th}>
+      <ModalHeader title={t("advancedStats", lang)} onClose={onClose} th={th} />
+      <div className="overflow-y-auto flex-1 p-5 space-y-4">
+        {/* Üst özet: akım zincir + ortalamalar */}
+        <div className="grid grid-cols-3 gap-2.5">
+          <div className={`flex flex-col items-center gap-1 rounded-2xl border p-3.5 ${th.card}`}>
+            <Flame size={18} className={th.accent3} />
+            <span className={`text-lg font-bold ${th.accent3}`}>{maxStreak}</span>
+            <span className={`text-[10px] text-center leading-tight ${th.textMuted}`}>{t("yourStreak", lang)}</span>
+          </div>
+          <div className={`flex flex-col items-center gap-1 rounded-2xl border p-3.5 ${th.card}`}>
+            <span className={`text-lg font-bold ${th.accent}`}>%{avg7}</span>
+            <span className={`text-[10px] text-center leading-tight ${th.textMuted}`}>{t("avg7", lang)}</span>
+          </div>
+          <div className={`flex flex-col items-center gap-1 rounded-2xl border p-3.5 ${th.card}`}>
+            <span className={`text-lg font-bold ${th.accent2}`}>%{avg30}</span>
+            <span className={`text-[10px] text-center leading-tight ${th.textMuted}`}>{t("avg30", lang)}</span>
+          </div>
+        </div>
+
+        {/* Son 30 gün grafiği (6 × 5 gün dilimi) */}
+        <div>
+          <p className={`text-xs uppercase tracking-wide mb-2 ${th.textMuted}`}>{t("last30Days", lang)}</p>
+          <div className={`rounded-2xl border p-4 ${th.card}`}>
+            <div className="flex items-end justify-between gap-2 h-28">
+              {buckets.map((b) => (
+                <div key={b.label} className="flex-1 flex flex-col items-center gap-1 min-w-0">
+                  <span className={`text-[10px] font-semibold ${b.due === 0 ? th.textMuted : th.accent}`}>
+                    {b.due === 0 ? "·" : b.done + "/" + b.due}
+                  </span>
+                  <div className={`w-full rounded-md ${th.accent} bg-current`}
+                    style={{ height: `${Math.max(4, (b.pct / maxBucket) * 70)}px`, opacity: b.due === 0 ? 0.15 : 0.35 + 0.65 * (b.pct / 100) }} />
+                  <span className={`text-[9px] uppercase ${th.textMuted}`}>{b.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Alışkanlık bazında seri */}
+        <div>
+          <p className={`text-xs uppercase tracking-wide mb-2 ${th.textMuted}`}>{t("perHabit", lang)}</p>
+          <div className={`rounded-2xl border p-2 ${th.card} space-y-1`}>
+            {habitStreaks.length === 0 && (
+              <p className={`text-xs text-center py-3 ${th.textMuted}`}>{t("noHabits", lang)}</p>
+            )}
+            {habitStreaks.map(({ habit, current, best }) => {
+              const cc = colorClass(habit, th);
+              return (
+                <div key={habit.id} className="flex items-center gap-3 rounded-xl px-2 py-2">
+                  <span className={`shrink-0 w-8 h-8 rounded-lg border flex items-center justify-center ${cc}`}>
+                    {habit.emoji}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-sm font-semibold truncate ${th.textPrimary}`}>{t(habit.name, lang)}</p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className={`text-[10px] rounded-full px-2 py-1 border ${th.card} ${th.accent3}`}>🔥 {t("dayStreak", lang, { n: String(current) })}</span>
+                    <span className={`text-[10px] rounded-full px-2 py-1 border ${th.card} ${th.textMuted}`}>{best}⚡</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* En tutarlı alışkanlıklar */}
+        <div>
+          <p className={`text-xs uppercase tracking-wide mb-2 ${th.textMuted}`}>{t("consistentTitle", lang)}</p>
+          <div className={`rounded-2xl border p-3 ${th.card} space-y-2`}>
+            {consistent.length === 0 && (
+              <p className={`text-xs text-center py-3 ${th.textMuted}`}>{t("noHabits", lang)}</p>
+            )}
+            {consistent.map((row, i) => (
+              <div key={row.habit.id} className="flex items-center gap-3">
+                <span className={`w-5 text-sm font-bold text-center ${i === 0 ? th.accent3 : th.textMuted}`}>#{i + 1}</span>
+                <span className={`shrink-0 w-8 h-8 rounded-lg border flex items-center justify-center ${colorClass(row.habit, th)}`}>
+                  {row.habit.emoji}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <p className={`text-sm font-semibold truncate ${th.textPrimary}`}>{t(row.habit.name, lang)}</p>
+                    <span className={`text-xs font-bold ${th.accent}`}>%{row.rate}</span>
+                  </div>
+                  <div className="h-1.5 w-full rounded-full bg-black/20 mt-1.5 overflow-hidden">
+                    <div className={`h-full rounded-full ${th.accent} bg-current`} style={{ width: `${row.rate}%`, opacity: 0.7 }} />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+// ============================================================================
 // MAZERET / SIFIRLAMA UYARI MODALI
 // ============================================================================
 function GraceModal({ usedGraceChallenges, resetChallenges, completedChallenges, challenges, onClose, th, lang }: {
@@ -1221,6 +1358,7 @@ export default function App() {
   const [challengeDetail, setChallengeDetail] = useState<Challenge | null>(null);
   const [showCalendar, setShowCalendar] = useState(false);
   const [showStats, setShowStats] = useState(false);
+  const [showDetailStats, setShowDetailStats] = useState(false);
   const [confirmDeleteHabit, setConfirmDeleteHabit] = useState<Habit | null>(null);
   const [habitSetPreview, setHabitSetPreview] = useState<HabitSetTemplate | null>(null);
   const [showGraceModal, setShowGraceModal] = useState(false);
@@ -1279,6 +1417,12 @@ export default function App() {
   // ---- Türetilmiş görünüm verisi ----
   const todayStats = useMemo(() => getTodayStats(habits, logs, today), [habits, logs, today]);
   const last7 = useMemo(() => getLastNDays(habits, logs, 7, today), [habits, logs, today]);
+  const maxCurrentStreak = useMemo(() => getMaxCurrentStreak(habits, logs, today), [habits, logs, today]);
+  const streakMotivation = maxCurrentStreak > 0
+    ? (todayStats.done === todayStats.due && todayStats.due > 0
+        ? t("motivateAchieved", lang)
+        : t("motivateKeep", lang, { n: String(maxCurrentStreak) }))
+    : t("motivateStart", lang);
   const activeChallenges = useMemo(() => challenges.filter((c) => c.status === "active"), [challenges]);
   const doneChallenges = useMemo(() => challenges.filter((c) => c.status !== "active"), [challenges]);
 
@@ -1512,6 +1656,28 @@ export default function App() {
             })}
           </div>
         </section>
+
+        {/* Seri özet kartı — merak uyandıran özet; detaylar için dokun → (sonra ödüllü reklam) detaylı grafikler */}
+        <button onClick={() => setShowDetailStats(true)}
+          className={`w-full rounded-3xl border p-5 text-left transition-all active:scale-[0.98] ${th.card}`}>
+          <div className="flex items-center justify-between mb-3">
+            <span className={`text-xs uppercase tracking-wide ${th.textMuted}`}>{t("yourStreak", lang)}</span>
+            <span className={`text-[10px] font-semibold ${th.accent2}`}>{t("tapForDetails", lang)}</span>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className={`shrink-0 w-16 h-16 rounded-2xl border flex items-center justify-center ${th.accent3} bg-current/20`}>
+              <Flame size={30} strokeWidth={2.2} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-baseline gap-1.5">
+                <span className={`text-4xl font-extrabold leading-none ${th.accent3}`}>{maxCurrentStreak}</span>
+                <span className={`text-sm font-semibold ${th.textSecondary}`}>{t("dayStreak", lang, { n: "" })}</span>
+              </div>
+              <p className={`text-sm mt-1.5 ${th.textPrimary}`}>{streakMotivation}</p>
+            </div>
+            <ChevronRight size={20} className={`shrink-0 ${th.textMuted}`} />
+          </div>
+        </button>
 
         {/* Alışkanlıklar */}
         <section className="space-y-3">
@@ -1842,6 +2008,10 @@ export default function App() {
 
       {showStats && (
         <StatsModal habits={habits} logs={logs} onClose={() => setShowStats(false)} th={th} lang={lang} />
+      )}
+
+      {showDetailStats && (
+        <DetailStatsModal habits={habits} logs={logs} onClose={() => setShowDetailStats(false)} th={th} lang={lang} />
       )}
 
       {habitSetPreview && (

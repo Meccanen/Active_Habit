@@ -107,6 +107,94 @@ export function getTodayStats(
   return { due, done, pct: due === 0 ? 0 : Math.round((done / due) * 100) };
 }
 
+/** Tüm aktif habit'lerdeki en yüksek AKIM (devam eden) zincir. Ana ekran özeti için. */
+export function getMaxCurrentStreak(
+  habits: Habit[],
+  logs: HabitLog[],
+  today: string
+): number {
+  const active = habits.filter((h) => !h.archived);
+  let max = 0;
+  for (const h of active) {
+    const s = getCurrentStreak(h, logs, today);
+    if (s > max) max = s;
+  }
+  return max;
+}
+
+/** Her aktif habit'in akım ve en iyi zinciri. */
+export function getHabitStreaks(
+  habits: Habit[],
+  logs: HabitLog[],
+  today: string
+): { habit: Habit; current: number; best: number }[] {
+  return habits
+    .filter((h) => !h.archived)
+    .map((h) => ({
+      habit: h,
+      current: getCurrentStreak(h, logs, today),
+      best: getBestStreak(h, logs, today),
+    }));
+}
+
+/** Uzun dönem günlük tamamlama çubuğu verisi (n gün). Son gün en sağda. */
+export function getLongRangeDays(
+  habits: Habit[],
+  logs: HabitLog[],
+  n: number,
+  today: string
+): DaySummary[] {
+  return getLastNDays(habits, logs, n, today);
+}
+
+/** Aralıktaki günlük ortalama tamamlanma yüzdesi (0-100). */
+export function getAverageRate(
+  habits: Habit[],
+  logs: HabitLog[],
+  n: number,
+  today: string
+): number {
+  const active = habits.filter((h) => !h.archived);
+  if (active.length === 0) return 0;
+  const from = addDays(today, -(n - 1));
+  return getCompletionRate(habits, logs, from, today);
+}
+
+/** En tutarlı aktif habit'ler: son n gün tamamlanma oranına göre azalan sıra. */
+export function getMostConsistent(
+  habits: Habit[],
+  logs: HabitLog[],
+  n: number,
+  today: string,
+  limit: number = 5
+): { habit: Habit; rate: number; current: number; best: number }[] {
+  const from = addDays(today, -(n - 1));
+  const rows = habits
+    .filter((h) => !h.archived)
+    .map((h) => {
+      let due = 0;
+      let done = 0;
+      let d = from;
+      let guard = 0;
+      while (d <= today && guard++ < 4000) {
+        if (isHabitDue(h, d)) {
+          due++;
+          if (isHabitComplete(h, logs, d)) done++;
+        }
+        d = addDays(d, 1);
+      }
+      return {
+        habit: h,
+        rate: due === 0 ? 0 : Math.round((done / due) * 100),
+        current: getCurrentStreak(h, logs, today),
+        best: getBestStreak(h, logs, today),
+      };
+    })
+    .sort((a, b) => b.rate - a.rate)
+    .slice(0, limit);
+  return rows;
+}
+
 /** [from, to] aralığında zorunlu günlerin tamamlanma oranı (0-100). */
 export function getCompletionRate(
   habits: Habit[],

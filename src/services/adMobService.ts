@@ -146,14 +146,36 @@ export function onBannerHeightChange(callback: (heightPx: number) => void): () =
 
 // ---- Ödüllü Geçiş Reklamı (Rewarded Interstitial) ----
 // Kullanım: UV/Hava Kalitesi/Ay Evresi/Hava Uyarısı gibi ekstra detay
-// ekranlarını açmadan önce. "Oturum başına 1" kuralı: kullanıcı bir kez
-// reklam izleyip ödülü kazandıktan sonra, uygulamayı kapatıp açana kadar
-// (aynı oturumda) tüm bu detay ekranları reklamsız açılır.
-let rewardedUnlockedThisSession = false;
+// ekranlarını açmadan önce.
+//
+// KoolDown kuralı: kullanıcı bir reklam izleyip ödülü kazandıktan sonra,
+// AYNI OTURUMDA 5 dakika boyunca başka ödüllü reklam gösterilmez (kilit
+// açık sayılır). Uygulama kapatılıp yeniden açılırsa bu oturum-içi sayaç
+// (bellek) sıfırlanır → ödüllü reklam gösterimleri yeniden aktif olur.
+//
+// NOT: Bu sayaç bilinçli olarak bellekte tutulur (localStorage'a yazılmaz);
+// böylece "uygulamadan çıkıp girince yeniden aktif" davranışı sağlanır.
+const REWARD_COOLDOWN_MS = 5 * 60 * 1000; // 5 dakika
 
-/** Bu oturumda zaten ödüllü reklam izlenip kilidin açılıp açılmadığını döner. */
+let rewardedUntil = 0;
+
+/**
+ * Bu oturumda reklam izlenip kilidin açık olduğunu (koolDown içinde) döner.
+ * Oturum içinde 5 dk geçmemişse true döner — böylece yeni ödüllü reklam
+ * gösterilmez.
+ */
 export function isRewardedUnlockedThisSession(): boolean {
-  return rewardedUnlockedThisSession;
+  return rewardedUntil > Date.now();
+}
+
+/** KoolDown'ı manuel olarak başlatır (oturum içinde 5 dk). */
+export function markRewardedUnlocked(): void {
+  rewardedUntil = Date.now() + REWARD_COOLDOWN_MS;
+}
+
+/** KoolDown'ın geri kalanını saniye cinsinden döner (0 ise yeni reklam gösterilebilir). */
+export function getRewardCooldownLeft(): number {
+  return Math.max(0, Math.ceil((rewardedUntil - Date.now()) / 1000));
 }
 
 /**
@@ -166,11 +188,11 @@ export function isRewardedUnlockedThisSession(): boolean {
  * - Kullanıcı reklamı ödül kazanmadan kapatırsa: false döner, içerik AÇILMAZ.
  */
 export async function unlockWithRewardedInterstitial(): Promise<boolean> {
-  if (rewardedUnlockedThisSession) return true;
+  if (rewardedUntil > Date.now()) return true;
 
   if (!REWARDED_INTERSTITIAL_AD_UNIT_ID) {
     console.warn('[adMobService] VITE_ADMOB_REWARDED_INTERSTITIAL_ID tanımlı değil, kilit açık bırakılıyor.');
-    rewardedUnlockedThisSession = true;
+    markRewardedUnlocked();
     return true;
   }
 
@@ -189,7 +211,7 @@ export async function unlockWithRewardedInterstitial(): Promise<boolean> {
 
     handles.push(
       AdMob.addListener(RewardInterstitialAdPluginEvents.Rewarded, () => {
-        rewardedUnlockedThisSession = true;
+        markRewardedUnlocked();
         finish(true);
       })
     );
@@ -199,12 +221,14 @@ export async function unlockWithRewardedInterstitial(): Promise<boolean> {
     handles.push(
       AdMob.addListener(RewardInterstitialAdPluginEvents.FailedToLoad, (error) => {
         console.error('[adMobService] Ödüllü reklam yüklenemedi, kilit açık bırakılıyor:', error);
+        markRewardedUnlocked();
         finish(true); // fail-open
       })
     );
     handles.push(
       AdMob.addListener(RewardInterstitialAdPluginEvents.FailedToShow, (error) => {
         console.error('[adMobService] Ödüllü reklam gösterilemedi, kilit açık bırakılıyor:', error);
+        markRewardedUnlocked();
         finish(true); // fail-open
       })
     );
@@ -216,6 +240,7 @@ export async function unlockWithRewardedInterstitial(): Promise<boolean> {
         await AdMob.showRewardInterstitialAd();
       } catch (error) {
         console.error('[adMobService] Ödüllü reklam akışı hata verdi, kilit açık bırakılıyor:', error);
+        markRewardedUnlocked();
         finish(true); // fail-open
       }
     })();

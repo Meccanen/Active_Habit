@@ -198,6 +198,24 @@ const en: Record<string, string> = {
   aboutContact: "Questions? Reach us at meccanen@meccanen.xyz",
   aboutPrivacyLink: "Privacy Policy",
   adFree: "Ad-Free",
+
+  yourStreak: "Your streak",
+  dayStreak: "{n}d",
+  motivateKeep: "🔥 Keep your {n}-day streak alive!",
+  motivateStart: "Start today — build your streak!",
+  motivateAchieved: "🔥 Great, your streak continues!",
+  tapForDetails: "See detailed charts",
+  advancedStats: "Advanced Stats",
+  last30Days: "Last 30 Days",
+  averages: "Averages",
+  avg7: "7-day avg",
+  avg30: "30-day avg",
+  perHabit: "Streak by Habit",
+  currentStreakLabel: "Current",
+  bestStreakLabel: "Best",
+  consistentTitle: "Most Consistent Habits",
+  consistentRate: "Completion",
+  daysAgo: "days ago",
 };
 
 const de: Record<string, string> = {
@@ -391,6 +409,24 @@ const de: Record<string, string> = {
   aboutContact: "Fragen? Schreiben Sie uns: meccanen@meccanen.xyz",
   aboutPrivacyLink: "Datenschutzerklärung",
   adFree: "Werbefrei",
+
+  yourStreak: "Deine Serie",
+  dayStreak: "{n}T",
+  motivateKeep: "🔥 Halte deine {n}-Tage-Serie am Leben!",
+  motivateStart: "Starte heute — baue deine Serie auf!",
+  motivateAchieved: "🔥 Super, deine Serie geht weiter!",
+  tapForDetails: "Detaillierte Diagramme",
+  advancedStats: "Erweiterte Statistiken",
+  last30Days: "Letzte 30 Tage",
+  averages: "Durchschnitte",
+  avg7: "7-Tage-Ø",
+  avg30: "30-Tage-Ø",
+  perHabit: "Serie nach Gewohnheit",
+  currentStreakLabel: "Aktuell",
+  bestStreakLabel: "Beste",
+  consistentTitle: "Beständigste Gewohnheiten",
+  consistentRate: "Erfüllung",
+  daysAgo: "Tage vergangen",
 };
 
 const tr: Record<string, string> = {
@@ -584,6 +620,24 @@ const tr: Record<string, string> = {
   aboutContact: "Sorularınız için: meccanen@meccanen.xyz",
   aboutPrivacyLink: "Gizlilik Politikası",
   adFree: "Reklamsız",
+
+  yourStreak: "Serin",
+  dayStreak: "{n}g",
+  motivateKeep: "🔥 {n} günlük serini kırma!",
+  motivateStart: "Bugün başla — serini oluştur!",
+  motivateAchieved: "🔥 Harika, serin devam ediyor!",
+  tapForDetails: "Detaylı grafikleri gör",
+  advancedStats: "Gelişmiş İstatistikler",
+  last30Days: "Son 30 Gün",
+  averages: "Ortalamalar",
+  avg7: "7 gün ort.",
+  avg30: "30 gün ort.",
+  perHabit: "Alışkanlık Bazında Seri",
+  currentStreakLabel: "Akım",
+  bestStreakLabel: "En iyi",
+  consistentTitle: "En Tutarlı Alışkanlıklar",
+  consistentRate: "Tamamlama",
+  daysAgo: "gün önce",
 };
 
 const ar: Record<string, string> = {
@@ -777,6 +831,24 @@ const ar: Record<string, string> = {
   aboutContact: "أسئلة؟ راسلنا عبر meccanen@meccanen.xyz",
   aboutPrivacyLink: "سياسة الخصوصية",
   adFree: "بدون إعلانات",
+
+  yourStreak: "سلسلتك",
+  dayStreak: "{n}ي",
+  motivateKeep: "🔥 حافظ على سلسلتك التي تبلغ {n} يومًا!",
+  motivateStart: "ابدأ اليوم — كوّن سلسلتك!",
+  motivateAchieved: "🔥 رائع، سلسلتك مستمرة!",
+  tapForDetails: "عرض الرسوم البيانية التفصيلية",
+  advancedStats: "إحصائيات متقدمة",
+  last30Days: "آخر 30 يومًا",
+  averages: "المتوسطات",
+  avg7: "متوسط 7 أيام",
+  avg30: "متوسط 30 يومًا",
+  perHabit: "السلسلة حسب العادة",
+  currentStreakLabel: "الحالي",
+  bestStreakLabel: "الأفضل",
+  consistentTitle: "أكثر العادات التزامًا",
+  consistentRate: "الإنجاز",
+  daysAgo: "أيام مضت",
 };
 
 const ur: Record<string, string> = {
@@ -970,6 +1042,24 @@ const ur: Record<string, string> = {
   aboutContact: "سوالات؟ ہم سے رابطہ کریں: meccanen@meccanen.xyz",
   aboutPrivacyLink: "رازداری کی پالیسی",
   adFree: "اشتہار سے پاک",
+
+  yourStreak: "آپ کی سلسلہ",
+  dayStreak: "{n}د",
+  motivateKeep: "🔥 اپنی {n} دن کی سلسلہ برقرار رکھیں!",
+  motivateStart: "آج شروع کریں — اپنی سلسلہ بنائیں!",
+  motivateAchieved: "🔥 زبردست، آپ کی سلسلہ جاری ہے!",
+  tapForDetails: "تفصیلی چارٹ دیکھیں",
+  advancedStats: "اعلیٰ اعداد و شمار",
+  last30Days: "پچھلے 30 دن",
+  averages: "اوسطیں",
+  avg7: "7 دن اوسط",
+  avg30: "30 دن اوسط",
+  perHabit: "عادت کے لحاظ سے سلسلہ",
+  currentStreakLabel: "موجودہ",
+  bestStreakLabel: "بہترین",
+  consistentTitle: "سب سے مستقل عادات",
+  consistentRate: "مکمل",
+  daysAgo: "دن پہلے",
 };
 
 const LANG_MAP: Record<string, LangCode> = {
