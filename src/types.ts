@@ -13,6 +13,7 @@ export interface Habit {
   targetPerDay: number; // günde kaç kez hedef
   unit: Unit; // hedef tipi: adet veya dakika
   targetMinutes?: number; // süreli hedefler için hedef dakika (unit="minutes")
+  packId?: string; // hazır alışkanlık paketinden geldiyse paket kimliği (tekrar eklemeyi engellemek için)
   createdAt: string; // YYYY-MM-DD
   archived: boolean;
   order: number;

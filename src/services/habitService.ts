@@ -210,9 +210,15 @@ export function addHabitSet(state: AppState, set: HabitSetTemplate): AppState {
         unit: item.unit,
         targetPerDay: item.targetPerDay,
         frequency: item.frequency,
+        packId: set.id,
       }),
     state
   );
+}
+
+/** Verilen paketin habit'leri zaten eklenmiş mi? (tekrar eklemeyi engeller) */
+export function isHabitSetAdded(state: AppState, setId: string): boolean {
+  return state.habits.some((h) => h.packId === setId);
 }
 
 export function updateHabit(state: AppState, id: string, patch: Partial<Habit>): AppState {

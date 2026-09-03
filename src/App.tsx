@@ -12,7 +12,8 @@ import {
   loadState, saveState, addHabit, updateHabit, deleteHabit,
   toggleLog, createChallengeFromTemplate, createCustomChallenge,
   deleteChallenge, toggleChallengeDay, setLogCount,
-  getActiveHabits, habitLogFor, addHabitSet,
+  getActiveHabits, habitLogFor, addHabitSet, isHabitSetAdded,
+  type HabitSetTemplate,
 } from "./services/habitService";
 import {
   todayStr, addDays, getCurrentStreak, getBestStreak,
@@ -406,7 +407,7 @@ function HabitModal({ existing, onSave, onClose, th, lang }: {
   onClose: () => void; th: typeof THEMES[ThemeKey]; lang: LangCode;
 }) {
   const [step, setStep] = useState(1);
-  const [name, setName] = useState(existing?.name || "");
+  const [name, setName] = useState(existing ? t(existing.name, lang) : "");
   const [emoji, setEmoji] = useState(existing?.emoji || HABIT_EMOJIS[0]);
   const [color, setColor] = useState(existing?.color || "accent");
   const [freqKind, setFreqKind] = useState<"daily" | "weekly">(existing?.frequency.kind || "daily");
@@ -832,7 +833,7 @@ function ChallengeDetailModal({ challenge, habit, logs, today, onToggle, onCance
                 {isHabitComplete(habit, logs, today) && <Check size={18} className="text-slate-950" />}
               </span>
               <div className="flex-1 min-w-0 text-left">
-                <p className={`text-sm font-semibold truncate ${th.textPrimary}`}>{habit.emoji} {habit.name}</p>
+                <p className={`text-sm font-semibold truncate ${th.textPrimary}`}>{habit.emoji} {t(habit.name, lang)}</p>
                 <p className={`text-xs ${th.textMuted}`}>
                   {habitLogFor(habit, logs, today).count}/{habit.targetPerDay}
                 </p>
@@ -955,7 +956,7 @@ function CalendarModal({ habits, logs, onToggle, onClose, th, lang }: {
                   <span className={`w-7 h-7 rounded-lg flex items-center justify-center border ${colorClass(h, th)} ${done ? "bg-current" : ""}`}>
                     {done && <Check size={14} className="text-slate-950" />}
                   </span>
-                  <span className={`flex-1 text-left text-sm truncate ${th.textPrimary}`}>{h.emoji} {h.name}</span>
+                  <span className={`flex-1 text-left text-sm truncate ${th.textPrimary}`}>{h.emoji} {t(h.name, lang)}</span>
                   <span className={`text-xs ${th.textMuted}`}>
                     {due ? `${habitLogFor(h, logs, selected).count}/${h.targetPerDay}` : "·"}
                   </span>
@@ -1221,6 +1222,7 @@ export default function App() {
   const [showCalendar, setShowCalendar] = useState(false);
   const [showStats, setShowStats] = useState(false);
   const [confirmDeleteHabit, setConfirmDeleteHabit] = useState<Habit | null>(null);
+  const [habitSetPreview, setHabitSetPreview] = useState<HabitSetTemplate | null>(null);
   const [showGraceModal, setShowGraceModal] = useState(false);
   const [gracePayload, setGracePayload] = useState<{ usedGraceIds: string[]; resetIds: string[]; completedIds: string[] }>({ usedGraceIds: [], resetIds: [], completedIds: [] });
   const [toast, setToast] = useState("");
@@ -1286,7 +1288,7 @@ export default function App() {
   const habitFor = (id: string) => habits.find((h) => h.id === id);
   const challengeHabitName = (c: Challenge) => {
     const h = habitFor(c.habitId);
-    return h ? `${h.emoji} ${h.name}` : c.name;
+    return h ? `${h.emoji} ${t(h.name, lang)}` : (c.name.startsWith("set") ? t(c.name, lang) : c.name);
   };
 
   // ---- AKSİYONLAR ----
@@ -1545,7 +1547,7 @@ export default function App() {
                         </span>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
-                            <p className={`text-sm font-semibold truncate ${th.textPrimary}`}>{h.name}</p>
+                            <p className={`text-sm font-semibold truncate ${th.textPrimary}`}>{t(h.name, lang)}</p>
                             {h.frequency.kind === "weekly" && (
                               <div className="flex gap-0.5">
                                 {[1, 2, 3, 4, 5, 6, 0].map((d) => (
@@ -1646,7 +1648,7 @@ export default function App() {
                       </button>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <p className={`text-sm font-semibold truncate ${th.textPrimary}`}>{h.name}</p>
+                          <p className={`text-sm font-semibold truncate ${th.textPrimary}`}>{t(h.name, lang)}</p>
                           {h.frequency.kind === "weekly" && (
                             <div className="flex gap-0.5">
                               {[1, 2, 3, 4, 5, 6, 0].map((d) => (
@@ -1687,31 +1689,28 @@ export default function App() {
           </div>
           <p className={`text-xs ${th.textMuted} -mt-2`}>{t("habitSetsSub", lang)}</p>
           <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
-            {HABIT_SETS.map((set) => (
+            {HABIT_SETS.map((set) => {
+              const added = isHabitSetAdded(state, set.id);
+              return (
               <motion.button key={set.id} whileTap={{ scale: 0.97 }}
-                onClick={() => {
-                  const resolved: typeof set = {
-                    ...set,
-                    habits: set.habits.map((h) => ({ ...h, nameKey: t(h.nameKey, lang) })),
-                  };
-                  setStateRaw((prev) => addHabitSet(prev, resolved));
-                  notify(t("habitSetAdded", lang));
-                }}
+                onClick={() => setHabitSetPreview(set)}
                 className={`w-56 shrink-0 text-left rounded-3xl border p-4 shadow-xl transition ${th.card} ${th.cardHover} relative`}>
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-3xl drop-shadow">{set.emoji}</span>
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${th.cardHover}`}>
-                    <Plus size={16} className={th.accent} />
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${added ? "text-green-500" : th.cardHover}`}>
+                    {added ? <Check size={16} /> : <Plus size={16} className={th.accent} />}
                   </div>
                 </div>
                 <p className={`font-bold text-sm leading-tight ${th.textPrimary}`}>{t(set.nameKey, lang)}</p>
                 <p className={`text-[11px] leading-snug mt-1 ${th.textMuted}`}>{t(set.descKey, lang)}</p>
-                <div className={`flex items-center gap-1 mt-2 text-[11px] font-semibold ${th.textSecondary}`}>
+                <div className={`flex items-center gap-1 mt-2 text-[11px] font-semibold ${added ? "text-green-500" : th.textSecondary}`}>
                   <span>{set.habits.length}</span>
                   <span>{t("habitSetsItems", lang)}</span>
+                  {added && <span>· {t("habitSetAddedTag", lang)}</span>}
                 </div>
               </motion.button>
-            ))}
+              );
+            })}
           </div>
         </section>
 
@@ -1843,6 +1842,49 @@ export default function App() {
 
       {showStats && (
         <StatsModal habits={habits} logs={logs} onClose={() => setShowStats(false)} th={th} lang={lang} />
+      )}
+
+      {habitSetPreview && (
+        <Modal onClose={() => setHabitSetPreview(null)} th={th}>
+          <ModalHeader title={`${habitSetPreview.emoji} ${t(habitSetPreview.nameKey, lang)}`}
+            onClose={() => setHabitSetPreview(null)} th={th} />
+          <div className="p-5 space-y-4">
+            <p className={`text-xs ${th.textMuted}`}>{t(habitSetPreview.descKey, lang)}</p>
+
+            <div className="space-y-2 max-h-72 overflow-y-auto">
+              {habitSetPreview.habits.map((h, i) => (
+                <div key={i} className={`flex items-center gap-3 rounded-xl border p-3 ${th.card}`}>
+                  <span className="text-2xl">{h.emoji}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-sm font-semibold truncate ${th.textPrimary}`}>{t(h.nameKey, lang)}</p>
+                    <p className={`text-xs ${th.textMuted}`}>
+                      {h.unit === "minutes"
+                        ? `${h.targetPerDay} ${t("minutes", lang)} / ${t("daily", lang).toLowerCase()}`
+                        : `${h.targetPerDay} ${t("times", lang)} / ${t("daily", lang).toLowerCase()}`}
+                      {h.frequency.kind === "weekly" && ` · ${h.frequency.days.length} ${t("weekly", lang).toLowerCase()}`}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {isHabitSetAdded(state, habitSetPreview.id) ? (
+              <button disabled
+                className={`w-full py-3 rounded-xl text-sm font-bold border ${th.card} text-green-500`}>
+                ✓ {t("habitSetAddedTag", lang)}
+              </button>
+            ) : (
+              <button onClick={() => {
+                setStateRaw((prev) => addHabitSet(prev, habitSetPreview));
+                setHabitSetPreview(null);
+                notify(t("habitSetAdded", lang));
+              }}
+                className={`w-full py-3 rounded-xl text-sm font-bold ${th.accent}`}>
+                {t("habitSetAddBtn", lang)}
+              </button>
+            )}
+          </div>
+        </Modal>
       )}
 
       {confirmDeleteHabit && (
