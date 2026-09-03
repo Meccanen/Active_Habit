@@ -359,7 +359,7 @@ function SettingsPanel({
                   {t("adFree", lang)}
                 </div>
               )}
-              <a href="https://meccanen.github.io/Hava_Durumu/privacy-policy-en.html" target="_blank" rel="noopener noreferrer"
+              <a href="https://meccanen.github.io/Active_Habit/privacy-policy-en.html" target="_blank" rel="noopener noreferrer"
                 className={`flex items-center gap-2 text-xs font-medium ${th.accent}`}>
                 <Shield size={15} />
                 {t("aboutPrivacyLink", lang)}
