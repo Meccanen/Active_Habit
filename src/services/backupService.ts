@@ -1,4 +1,7 @@
 import type { AppState } from "../types";
+import { Capacitor } from "@capacitor/core";
+import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
+import { Share } from "@capacitor/share";
 
 /**
  * Yedekleme & Geri Yükleme servisi.
@@ -11,6 +14,10 @@ import type { AppState } from "../types";
  * VERİ GİZLİLİĞİ: Tüm veriler yalnızca cihazda saklanır. Yedeği dışa aktarmak
  * dosyayı kullanıcının cihazına indirir; hiçbir sunucuya gönderilmez.
  */
+
+/** Dosya paylaşımında kullanılacak geçici dizin ve dosya adı. */
+const BACKUP_DIR = "backups";
+const BACKUP_FILENAME = (): string => `habit-tracker-backup-${new Date().toISOString().slice(0, 10)}.json`;
 
 export interface BackupSettings {
   theme: string;
@@ -28,6 +35,36 @@ export interface BackupFile {
 
 const BACKUP_VERSION = 1;
 const APP_ID = "active-habit-tracker";
+
+/**
+ * Yedekleme dosyasını uygulamanın geçici dizinine yazar ve kullanıcının
+ * paylaşım menüsü (WhatsApp, Drive, Mail, dosya lideri vb.) ile gönderir.
+ * Bu, Capacitor native WebView'de web-tabanlı indirilmeden daha güvenilirdir.
+ */
+export async function exportBackupWithShare(state: AppState, settings: BackupSettings): Promise<void> {
+  const backup = buildBackup(state, settings);
+  const json = JSON.stringify(backup, null, 2);
+  const filename = BACKUP_FILENAME();
+
+  if (Capacitor.getPlatform() === "web") {
+    // Web (tarayıcı testi) ortamında blob indirmeye dön.
+    downloadBackupJson(json);
+    return;
+  }
+
+  await Filesystem.mkdir({ path: BACKUP_DIR, directory: Directory.Cache, recursive: true }).catch(() => {});
+  await Filesystem.writeFile({
+    path: `${BACKUP_DIR}/${filename}`,
+    data: json,
+    directory: Directory.Cache,
+    encoding: Encoding.UTF8,
+  });
+  const uri = (await Filesystem.getUri({ path: `${BACKUP_DIR}/${filename}`, directory: Directory.Cache })).uri;
+  await Share.share({
+    title: "Active Habit Tracker Backup",
+    files: [uri],
+  });
+}
 
 function validateSettings(s: unknown): BackupSettings {
   const o = (s ?? {}) as Record<string, unknown>;

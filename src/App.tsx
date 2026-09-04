@@ -29,7 +29,7 @@ import {
 } from "./services/adMobService";
 import { checkIsSupporter } from "./services/billingService";
 import {
-  buildBackup, downloadBackupJson, parseBackup, readCurrentSettings,
+  exportBackupWithShare, readCurrentSettings, parseBackup,
   type BackupSettings,
 } from "./services/backupService";
 
@@ -289,12 +289,18 @@ function SettingsPanel({
   const [pendingRestore, setPendingRestore] = useState<{ state: AppState; settings: BackupSettings } | null>(null);
   useEffect(() => { checkIsSupporter().then(setIsSupporter); }, []);
 
-  const doBackup = () => {
+  const doBackup = async () => {
     const state = loadState();
-    const backup = buildBackup(state, readCurrentSettings());
-    const json = JSON.stringify(backup, null, 2);
-    downloadBackupJson(json);
-    onNotify(t("backupSuccess", lang));
+    try {
+      await exportBackupWithShare(state, readCurrentSettings());
+      onNotify(t("backupSuccess", lang));
+    } catch {
+      onNotify(t("backupError", lang));
+    }
+  };
+
+  const onRestorePick = () => {
+    if (fileInputRef.current) fileInputRef.current.click();
   };
 
   const onFileSelected = (file: File | undefined) => {
@@ -394,7 +400,7 @@ function SettingsPanel({
                 <h3 className={`text-sm font-semibold ${th.textPrimary}`}>{t("restoreTitle", lang)}</h3>
               </div>
               <p className={`text-xs leading-relaxed mb-3 ${th.textSecondary}`}>{t("restoreDesc", lang)}</p>
-              <button onClick={() => fileInputRef.current?.click()}
+              <button onClick={onRestorePick}
                 className={`w-full rounded-xl border px-4 py-3 text-sm font-semibold ${th.card} ${th.accent2} active:scale-[0.98] transition`}>
                 {t("restoreFromFile", lang)}
               </button>

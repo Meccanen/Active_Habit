@@ -16,6 +16,8 @@
     "@capacitor/android": "^6.0.0",
     "@capacitor/cli": "^6.0.0",
     "@capacitor/core": "^6.0.0",
+    "@capacitor/filesystem": "^6.0.4",
+    "@capacitor/share": "^6.0.4",
     "@fortawesome/fontawesome-svg-core": "^7.2.0",
     "@fortawesome/free-solid-svg-icons": "^7.2.0",
     "@fortawesome/react-fontawesome": "^3.3.1",
