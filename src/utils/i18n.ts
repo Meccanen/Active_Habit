@@ -216,6 +216,21 @@ const en: Record<string, string> = {
   consistentTitle: "Most Consistent Habits",
   consistentRate: "Completion",
   daysAgo: "days ago",
+
+  backupTab: "Backup",
+  backupTitle: "Backup",
+  backupDesc: "Save all your habits, logs and settings as a JSON file on your device.",
+  backupNow: "Backup (download JSON)",
+  backupSuccess: "Backup downloaded",
+  restoreTitle: "Restore",
+  restoreDesc: "Load a previously saved backup file to restore your data.",
+  restoreFromFile: "Restore (choose file)",
+  restoreConfirmTitle: "Restore data?",
+  restoreConfirmDesc: "Your current data and settings will be replaced with the backup contents.",
+  restoreConfirmOk: "Yes, restore",
+  restoreSuccess: "Data restored",
+  restoreError: "Invalid backup file",
+  backupNote: "Your data is stored only on this device. Back up regularly, especially before changing phones.",
 };
 
 const de: Record<string, string> = {
@@ -427,6 +442,21 @@ const de: Record<string, string> = {
   consistentTitle: "Beständigste Gewohnheiten",
   consistentRate: "Erfüllung",
   daysAgo: "Tage vergangen",
+
+  backupTab: "Sicherung",
+  backupTitle: "Sicherung",
+  backupDesc: "Speichere alle deine Gewohnheiten, Protokolle und Einstellungen als JSON-Datei auf deinem Gerät.",
+  backupNow: "Sichern (JSON herunterladen)",
+  backupSuccess: "Sicherung heruntergeladen",
+  restoreTitle: "Wiederherstellen",
+  restoreDesc: "Lade eine zuvor gespeicherte Sicherungsdatei, um deine Daten wiederherzustellen.",
+  restoreFromFile: "Wiederherstellen (Datei wählen)",
+  restoreConfirmTitle: "Daten wiederherstellen?",
+  restoreConfirmDesc: "Deine aktuellen Daten und Einstellungen werden durch den Inhalt der Sicherung ersetzt.",
+  restoreConfirmOk: "Ja, wiederherstellen",
+  restoreSuccess: "Daten wiederhergestellt",
+  restoreError: "Ungültige Sicherungsdatei",
+  backupNote: "Deine Daten werden nur auf diesem Gerät gespeichert. Sichere regelmäßig, besonders vor einem Handy-Wechsel.",
 };
 
 const tr: Record<string, string> = {
@@ -638,6 +668,21 @@ const tr: Record<string, string> = {
   consistentTitle: "En Tutarlı Alışkanlıklar",
   consistentRate: "Tamamlama",
   daysAgo: "gün önce",
+
+  backupTab: "Yedekleme",
+  backupTitle: "Yedekleme",
+  backupDesc: "Tüm alışkanlıklarını, kayıtlarını ve ayarlarını cihazına JSON dosyası olarak kaydet.",
+  backupNow: "Yedekle (JSON indir)",
+  backupSuccess: "Yedek indirildi",
+  restoreTitle: "Geri Yükleme",
+  restoreDesc: "Daha önce kaydettiğin bir yedek dosyasını yükleyerek verilerini geri getir.",
+  restoreFromFile: "Geri Yükle (dosya seç)",
+  restoreConfirmTitle: "Veri geri yüklensin mi?",
+  restoreConfirmDesc: "Mevcut verilerin ve ayarların, yedekteki içerikle değiştirilecek.",
+  restoreConfirmOk: "Evet, geri yükle",
+  restoreSuccess: "Veri geri yüklendi",
+  restoreError: "Geçersiz yedek dosyası",
+  backupNote: "Verilerin yalnızca bu cihazda saklanır. Özellikle telefon değiştirmeden önce düzenli yedek al.",
 };
 
 const ar: Record<string, string> = {
@@ -849,6 +894,21 @@ const ar: Record<string, string> = {
   consistentTitle: "أكثر العادات التزامًا",
   consistentRate: "الإنجاز",
   daysAgo: "أيام مضت",
+
+  backupTab: "نسخ احتياطي",
+  backupTitle: "نسخ احتياطي",
+  backupDesc: "احفظ جميع عاداتك وسجلاتك وإعداداتك كملف JSON على جهازك.",
+  backupNow: "نسخ احتياطي (تنزيل JSON)",
+  backupSuccess: "تم تنزيل النسخة الاحتياطية",
+  restoreTitle: "استعادة",
+  restoreDesc: "حمّل ملف نسخة احتياطية محفوظ مسبقًا لاستعادة بياناتك.",
+  restoreFromFile: "استعادة (اختر ملفًا)",
+  restoreConfirmTitle: "استعادة البيانات؟",
+  restoreConfirmDesc: "سيتم استبدال بياناتك وإعداداتك الحالية بمحتويات النسخة الاحتياطية.",
+  restoreConfirmOk: "نعم، استعادة",
+  restoreSuccess: "تمت استعادة البيانات",
+  restoreError: "ملف نسخة احتياطية غير صالح",
+  backupNote: "تُخزَّن بياناتك على هذا الجهاز فقط. قم بعمل نسخة احتياطية بانتظام، خاصة قبل تغيير الهاتف.",
 };
 
 const ur: Record<string, string> = {
@@ -1060,6 +1120,21 @@ const ur: Record<string, string> = {
   consistentTitle: "سب سے مستقل عادات",
   consistentRate: "مکمل",
   daysAgo: "دن پہلے",
+
+  backupTab: "بیک اپ",
+  backupTitle: "بیک اپ",
+  backupDesc: "اپنی تمام عادات، لاگز اور ترتیبات کو اپنے آلے پر JSON فائل کے طور پر محفوظ کریں۔",
+  backupNow: "بیک اپ (JSON ڈاؤن لوڈ)",
+  backupSuccess: "بیک اپ ڈاؤن لوڈ ہو گیا",
+  restoreTitle: "بحالی",
+  restoreDesc: "اپنے ڈیٹا کو بحال کرنے کے لیے پہلے محفوظ شدہ بیک اپ فائل لوڈ کریں۔",
+  restoreFromFile: "بحالی (فائل منتخب کریں)",
+  restoreConfirmTitle: "ڈیٹا بحال کریں؟",
+  restoreConfirmDesc: "آپ کا موجودہ ڈیٹا اور ترتیبات بیک اپ کے مواد سے تبدیل ہو جائیں گے۔",
+  restoreConfirmOk: "ہاں، بحال کریں",
+  restoreSuccess: "ڈیٹا بحال ہو گیا",
+  restoreError: "غلط بیک اپ فائل",
+  backupNote: "آپ کا ڈیٹا صرف اس آلے پر محفوظ ہے۔ فون تبدیل کرنے سے پہلے باقاعدگی سے بیک اپ لیں۔",
 };
 
 const LANG_MAP: Record<string, LangCode> = {

@@ -3,9 +3,9 @@ import { motion, AnimatePresence } from "motion/react";
 import {
   Check, Settings, Palette, X, Plus, Trash2, Pencil, Flame, Calendar,
   BarChart3, Trophy, ChevronRight, ChevronLeft, Zap, Shield,
-  Mail, Lock, Star, Sparkles,
+  Mail, Lock, Star, Sparkles, Download, Upload,
 } from "lucide-react";
-import type { Habit, Challenge, ChallengeTemplate, Unit } from "./types";
+import type { Habit, Challenge, ChallengeTemplate, Unit, AppState } from "./types";
 import { t, detectLanguage, LangCode } from "./utils/i18n";
 import {
   HABIT_EMOJIS, HABIT_COLORS, CHALLENGE_TEMPLATES, HABIT_SETS,
@@ -28,6 +28,10 @@ import {
   isRewardedUnlockedThisSession,
 } from "./services/adMobService";
 import { checkIsSupporter } from "./services/billingService";
+import {
+  buildBackup, downloadBackupJson, parseBackup, readCurrentSettings,
+  type BackupSettings,
+} from "./services/backupService";
 
 export type FontScale = "normal" | "large" | "xlarge";
 
@@ -269,15 +273,55 @@ function ModalHeader({ title, onClose, th }: { title: string; onClose: () => voi
 // ============================================================================
 function SettingsPanel({
   theme, setTheme, onClose, th, lang, setLang, initialTab,
+  setFontScale, setState, onNotify,
 }: {
   theme: ThemeKey; setTheme: (k: ThemeKey) => void;
   onClose: () => void; th: typeof THEMES[ThemeKey];
   lang: LangCode; setLang: (l: LangCode) => void;
-  initialTab?: "tema" | "dil" | "hakkinda";
+  setFontScale: (f: FontScale) => void;
+  setState: React.Dispatch<React.SetStateAction<AppState>>;
+  onNotify: (msg: string) => void;
+  initialTab?: "tema" | "dil" | "yedekleme" | "hakkinda";
 }) {
-  const [tab, setTab] = useState<"tema" | "dil" | "hakkinda">(initialTab || "tema");
+  const [tab, setTab] = useState<"tema" | "dil" | "yedekleme" | "hakkinda">(initialTab || "tema");
   const [isSupporter, setIsSupporter] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [pendingRestore, setPendingRestore] = useState<{ state: AppState; settings: BackupSettings } | null>(null);
   useEffect(() => { checkIsSupporter().then(setIsSupporter); }, []);
+
+  const doBackup = () => {
+    const state = loadState();
+    const backup = buildBackup(state, readCurrentSettings());
+    const json = JSON.stringify(backup, null, 2);
+    downloadBackupJson(json);
+    onNotify(t("backupSuccess", lang));
+  };
+
+  const onFileSelected = (file: File | undefined) => {
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const parsed = parseBackup(String(reader.result ?? ""));
+      if (!parsed) { onNotify(t("restoreError", lang)); return; }
+      setPendingRestore(parsed);
+    };
+    reader.readAsText(file);
+  };
+
+  const applyRestore = () => {
+    if (!pendingRestore) return;
+    const { state, settings } = pendingRestore;
+    setState(state);
+    window.localStorage.setItem("mht_theme", settings.theme);
+    window.localStorage.setItem("mht_lang", settings.lang);
+    window.localStorage.setItem("mht_font_scale", settings.fontScale);
+    setTheme(settings.theme as ThemeKey);
+    setLang(settings.lang as LangCode);
+    setFontScale(settings.fontScale as FontScale);
+    setPendingRestore(null);
+    onNotify(t("restoreSuccess", lang));
+  };
 
   const LANGUAGES: { code: LangCode; label: string }[] = [
     { code: "tr", label: "Türkçe" }, { code: "en", label: "English" },
@@ -286,13 +330,14 @@ function SettingsPanel({
   ];
 
   return (
+    <>
     <Modal onClose={onClose} th={th}>
       <ModalHeader title={t("settings", lang)} onClose={onClose} th={th} />
       <div className={`flex border-b ${th.header} px-2`}>
-        {(["tema", "dil", "hakkinda"] as const).map((tb) => (
+        {(["tema", "dil", "yedekleme", "hakkinda"] as const).map((tb) => (
           <button key={tb} onClick={() => setTab(tb)}
             className={`flex-1 py-3 text-sm font-medium transition ${tab === tb ? th.accent : th.textMuted}`}>
-            {tb === "tema" ? t("themeTab", lang) : tb === "dil" ? t("language", lang) : t("about", lang)}
+            {tb === "tema" ? t("themeTab", lang) : tb === "dil" ? t("language", lang) : tb === "yedekleme" ? t("backupTab", lang) : t("about", lang)}
           </button>
         ))}
       </div>
@@ -326,6 +371,43 @@ function SettingsPanel({
                 </button>
               ))}
             </div>
+          </div>
+        )}
+
+        {tab === "yedekleme" && (
+          <div className="space-y-4">
+            <div className={`rounded-2xl border p-4 ${th.card}`}>
+              <div className="flex items-center gap-2 mb-1">
+                <Download size={16} className={th.accent} />
+                <h3 className={`text-sm font-semibold ${th.textPrimary}`}>{t("backupTitle", lang)}</h3>
+              </div>
+              <p className={`text-xs leading-relaxed mb-3 ${th.textSecondary}`}>{t("backupDesc", lang)}</p>
+              <button onClick={doBackup}
+                className={`w-full rounded-xl border px-4 py-3 text-sm font-semibold ${th.card} ${th.accent} active:scale-[0.98] transition`}>
+                {t("backupNow", lang)}
+              </button>
+            </div>
+
+            <div className={`rounded-2xl border p-4 ${th.card}`}>
+              <div className="flex items-center gap-2 mb-1">
+                <Upload size={16} className={th.accent2} />
+                <h3 className={`text-sm font-semibold ${th.textPrimary}`}>{t("restoreTitle", lang)}</h3>
+              </div>
+              <p className={`text-xs leading-relaxed mb-3 ${th.textSecondary}`}>{t("restoreDesc", lang)}</p>
+              <button onClick={() => fileInputRef.current?.click()}
+                className={`w-full rounded-xl border px-4 py-3 text-sm font-semibold ${th.card} ${th.accent2} active:scale-[0.98] transition`}>
+                {t("restoreFromFile", lang)}
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="application/json,.json"
+                className="hidden"
+                onChange={(e) => onFileSelected(e.target.files?.[0])}
+              />
+            </div>
+
+            <p className={`text-xs leading-relaxed ${th.textMuted}`}>{t("backupNote", lang)}</p>
           </div>
         )}
 
@@ -376,6 +458,26 @@ function SettingsPanel({
         )}
       </div>
     </Modal>
+
+    {pendingRestore && (
+      <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 backdrop-blur-sm px-4 animate-fadeIn">
+        <div className={`w-full max-w-sm rounded-[24px] border p-5 ${th.settingsCard}`}>
+          <h3 className={`font-semibold text-base mb-2 ${th.textPrimary}`}>{t("restoreConfirmTitle", lang)}</h3>
+          <p className={`text-xs leading-relaxed mb-4 ${th.textSecondary}`}>{t("restoreConfirmDesc", lang)}</p>
+          <div className="flex gap-2">
+            <button onClick={() => setPendingRestore(null)}
+              className={`flex-1 rounded-xl border px-4 py-2.5 text-sm font-semibold ${th.card} ${th.textMuted}`}>
+              {t("cancel", lang)}
+            </button>
+            <button onClick={applyRestore}
+              className={`flex-1 rounded-xl border px-4 py-2.5 text-sm font-semibold ${th.card} ${th.accent}`}>
+              {t("restoreConfirmOk", lang)}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }
 
@@ -1349,7 +1451,7 @@ export default function App() {
 
   // ---- Modaller ----
   const [showSettings, setShowSettings] = useState(false);
-  const [settingsTab, setSettingsTab] = useState<"tema" | "dil" | "hakkinda">("tema");
+  const [settingsTab, setSettingsTab] = useState<"tema" | "dil" | "yedekleme" | "hakkinda">("tema");
   const [showHabitModal, setShowHabitModal] = useState(false);
   const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
   const [showChallengePicker, setShowChallengePicker] = useState(false);
@@ -1969,6 +2071,7 @@ export default function App() {
       {/* ---- MODALLER ---- */}
       {showSettings && (
         <SettingsPanel theme={themeKey} setTheme={setTheme} lang={lang} setLang={setLang}
+          setFontScale={setFontScale} setState={setStateRaw} onNotify={notify}
           onClose={() => setShowSettings(false)} th={th} initialTab={settingsTab} />
       )}
 
