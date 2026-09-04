@@ -1220,16 +1220,19 @@ function DetailStatsModal({ habits, logs, onClose, th, lang }: {
   const perHabitRef = useRef<HTMLDivElement>(null);
   const consistentRef = useRef<HTMLDivElement>(null);
   const [sharing, setSharing] = useState<number | null>(null);
+  const [shareError, setShareError] = useState<string | null>(null);
 
   const share = async (mode: "image" | "pdf", ref: React.RefObject<HTMLDivElement | null>, shareId: number) => {
     const el = ref.current;
     if (!el) return;
     setSharing(shareId);
+    setShareError(null);
     try {
       if (mode === "image") await shareReportBlockAsImage(el);
       else await shareReportBlockAsPdf(el);
     } catch (e) {
       console.error("[reportShare]", e);
+      setShareError(String(e instanceof Error ? e.message : e));
     } finally {
       setSharing(null);
     }
@@ -1299,8 +1302,8 @@ function DetailStatsModal({ habits, logs, onClose, th, lang }: {
                   <span className={`text-[10px] font-semibold ${b.due === 0 ? th.textMuted : th.accent}`}>
                     {b.due === 0 ? "·" : b.done + "/" + b.due}
                   </span>
-                  <div className={`w-full rounded-md ${th.accent} bg-current`}
-                    style={{ height: `${Math.max(4, (b.pct / maxBucket) * 70)}px`, opacity: b.due === 0 ? 0.15 : 0.35 + 0.65 * (b.pct / 100) }} />
+                  <div className="w-full rounded-md"
+                    style={{ backgroundColor: th.accent, height: `${Math.max(4, (b.pct / maxBucket) * 70)}px`, opacity: b.due === 0 ? 0.15 : 0.35 + 0.65 * (b.pct / 100) }} />
                   <span className={`text-[9px] uppercase ${th.textMuted}`}>{b.label}</span>
                 </div>
               ))}
@@ -1355,8 +1358,8 @@ function DetailStatsModal({ habits, logs, onClose, th, lang }: {
                     <p className={`text-sm font-semibold truncate ${th.textPrimary}`}>{t(row.habit.name, lang)}</p>
                     <span className={`text-xs font-bold ${th.accent}`}>%{row.rate}</span>
                   </div>
-                  <div className="h-1.5 w-full rounded-full bg-black/20 mt-1.5 overflow-hidden">
-                    <div className={`h-full rounded-full ${th.accent} bg-current`} style={{ width: `${row.rate}%`, opacity: 0.7 }} />
+                  <div className="h-1.5 w-full rounded-full mt-1.5 overflow-hidden" style={{ backgroundColor: "rgba(0,0,0,0.2)" }}>
+                    <div className="h-full rounded-full" style={{ backgroundColor: th.accent, width: `${row.rate}%`, opacity: 0.7 }} />
                   </div>
                 </div>
               </div>
@@ -1364,6 +1367,9 @@ function DetailStatsModal({ habits, logs, onClose, th, lang }: {
           </div>
           <ShareRow target={consistentRef} share={share} shareId={4} sharing={sharing} th={th} lang={lang} />
         </div>
+        {shareError && (
+          <p className="text-[11px] text-red-500 break-all px-1">{shareError}</p>
+        )}
       </div>
     </Modal>
   );
