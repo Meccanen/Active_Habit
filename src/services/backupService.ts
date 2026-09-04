@@ -15,6 +15,33 @@ import { Share } from "@capacitor/share";
  * dosyayı kullanıcının cihazına indirir; hiçbir sunucuya gönderilmez.
  */
 
+/**
+ * Yedekleme dosyasını uygulamanın görünür Documents klasörüne kaydeder ve
+ * kaydedilen dosyanın adını döndürür. (Android'de uygulamaya özel external
+ * files klasörüne yazar; uygulama kaldırılınca bu klasör de silinir.)
+ */
+export async function saveBackupToDocuments(state: AppState, settings: BackupSettings): Promise<string | null> {
+  if (Capacitor.getPlatform() === "web") {
+    const backup = buildBackup(state, settings);
+    downloadBackupJson(JSON.stringify(backup, null, 2));
+    return null;
+  }
+  const backup = buildBackup(state, settings);
+  const filename = BACKUP_FILENAME();
+  try {
+    await Filesystem.writeFile({
+      path: filename,
+      data: JSON.stringify(backup, null, 2),
+      directory: Directory.Documents,
+      encoding: Encoding.UTF8,
+    });
+    return filename;
+  } catch (e) {
+    console.error("[backupService] Documents kaydı başarısız:", e);
+    return null;
+  }
+}
+
 /** Dosya paylaşımında kullanılacak geçici dizin ve dosya adı. */
 const BACKUP_DIR = "backups";
 const BACKUP_FILENAME = (): string => `habit-tracker-backup-${new Date().toISOString().slice(0, 10)}.json`;

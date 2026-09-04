@@ -30,6 +30,7 @@ import {
 import { checkIsSupporter } from "./services/billingService";
 import {
   exportBackupWithShare, readCurrentSettings, parseBackup,
+  saveBackupToDocuments,
   type BackupSettings,
 } from "./services/backupService";
 
@@ -287,9 +288,14 @@ function SettingsPanel({
   const [isSupporter, setIsSupporter] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [pendingRestore, setPendingRestore] = useState<{ state: AppState; settings: BackupSettings } | null>(null);
+  const [showBackupOptions, setShowBackupOptions] = useState(false);
+  const [savedBackupName, setSavedBackupName] = useState<string | null>(null);
   useEffect(() => { checkIsSupporter().then(setIsSupporter); }, []);
 
-  const doBackup = async () => {
+  const openBackupOptions = () => setShowBackupOptions(true);
+
+  const doBackupShare = async () => {
+    setShowBackupOptions(false);
     const state = loadState();
     try {
       await exportBackupWithShare(state, readCurrentSettings());
@@ -297,6 +303,13 @@ function SettingsPanel({
     } catch {
       onNotify(t("backupError", lang));
     }
+  };
+
+  const doBackupSave = async () => {
+    setShowBackupOptions(false);
+    const name = await saveBackupToDocuments(loadState(), readCurrentSettings());
+    setSavedBackupName(name);
+    onNotify(name ? t("backupSaved", lang) : t("backupSaveError", lang));
   };
 
   const onRestorePick = () => {
@@ -388,10 +401,13 @@ function SettingsPanel({
                 <h3 className={`text-sm font-semibold ${th.textPrimary}`}>{t("backupTitle", lang)}</h3>
               </div>
               <p className={`text-xs leading-relaxed mb-3 ${th.textSecondary}`}>{t("backupDesc", lang)}</p>
-              <button onClick={doBackup}
+              <button onClick={openBackupOptions}
                 className={`w-full rounded-xl border px-4 py-3 text-sm font-semibold ${th.card} ${th.accent} active:scale-[0.98] transition`}>
                 {t("backupNow", lang)}
               </button>
+              {savedBackupName && (
+                <p className="text-xs mt-2 break-all text-center" style={{ color: th.accent }}>{savedBackupName}</p>
+              )}
             </div>
 
             <div className={`rounded-2xl border p-4 ${th.card}`}>
@@ -478,6 +494,29 @@ function SettingsPanel({
             <button onClick={applyRestore}
               className={`flex-1 rounded-xl border px-4 py-2.5 text-sm font-semibold ${th.card} ${th.accent}`}>
               {t("restoreConfirmOk", lang)}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {showBackupOptions && (
+      <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 backdrop-blur-sm px-4 animate-fadeIn">
+        <div className={`w-full max-w-sm rounded-[24px] border p-5 ${th.settingsCard}`}>
+          <h3 className={`font-semibold text-base mb-1 ${th.textPrimary}`}>{t("backupOptionsTitle", lang)}</h3>
+          <p className={`text-xs leading-relaxed mb-4 ${th.textSecondary}`}>{t("backupOptionsDesc", lang)}</p>
+          <div className="flex flex-col gap-2">
+            <button onClick={doBackupShare}
+              className={`w-full rounded-xl border px-4 py-3 text-sm font-semibold ${th.card} ${th.accent} active:scale-[0.98] transition`}>
+              {t("backupOptionShare", lang)}
+            </button>
+            <button onClick={doBackupSave}
+              className={`w-full rounded-xl border px-4 py-3 text-sm font-semibold ${th.card} ${th.accent2} active:scale-[0.98] transition`}>
+              {t("backupOptionSave", lang)}
+            </button>
+            <button onClick={() => setShowBackupOptions(false)}
+              className={`w-full rounded-xl border px-4 py-2.5 text-xs font-semibold ${th.card} ${th.textMuted} active:scale-[0.98] transition`}>
+              {t("cancel", lang)}
             </button>
           </div>
         </div>
