@@ -1,5 +1,5 @@
 import { Capacitor } from "@capacitor/core";
-import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
+import { Filesystem, Directory } from "@capacitor/filesystem";
 import { Share } from "@capacitor/share";
 import html2canvas from "html2canvas-pro";
 import { jsPDF } from "jspdf";
@@ -32,11 +32,13 @@ async function deliver(blob: Blob, name: string): Promise<void> {
   }
   const base64 = await blobToBase64(blob);
   await Filesystem.mkdir({ path: REPORT_DIR, directory: Directory.Cache, recursive: true }).catch(() => {});
+  // encoding verilmez → Android/iOS data'yı base64'ten çözüp gerçek binary
+  // olarak yazar. Encoding.UTF8 verilirse base64 METİN olarak kalır ve
+  // PNG/PDF dosyası bozulur.
   await Filesystem.writeFile({
     path: `${REPORT_DIR}/${name}`,
     data: base64,
     directory: Directory.Cache,
-    encoding: Encoding.UTF8,
   });
   const uri = (await Filesystem.getUri({ path: `${REPORT_DIR}/${name}`, directory: Directory.Cache })).uri;
   await Share.share({
@@ -51,8 +53,9 @@ function blobToBase64(blob: Blob): Promise<string> {
     reader.onload = () => {
       const result = String(reader.result ?? "");
       // FileReader base64'i "data:...;base64,...." olarak döndürür; virgülden
-      // sonrasını alırız.
-      resolve(result.split(",")[1] ?? result);
+      // sonrasını alırız. Satır sonları decode'u bozabilir → temizle.
+      const payload = (result.split(",")[1] ?? result).replace(/[\r\n]/g, "");
+      resolve(payload);
     };
     reader.onerror = () => reject(reader.error);
     reader.readAsDataURL(blob);
