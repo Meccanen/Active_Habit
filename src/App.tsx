@@ -30,7 +30,6 @@ import {
 import { checkIsSupporter } from "./services/billingService";
 import {
   exportBackupWithShare, readCurrentSettings, parseBackup,
-  saveBackupToDocuments,
   type BackupSettings,
 } from "./services/backupService";
 
@@ -289,7 +288,6 @@ function SettingsPanel({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [pendingRestore, setPendingRestore] = useState<{ state: AppState; settings: BackupSettings } | null>(null);
   const [showBackupOptions, setShowBackupOptions] = useState(false);
-  const [savedBackupName, setSavedBackupName] = useState<string | null>(null);
   useEffect(() => { checkIsSupporter().then(setIsSupporter); }, []);
 
   const openBackupOptions = () => setShowBackupOptions(true);
@@ -303,13 +301,6 @@ function SettingsPanel({
     } catch {
       onNotify(t("backupError", lang));
     }
-  };
-
-  const doBackupSave = async () => {
-    setShowBackupOptions(false);
-    const name = await saveBackupToDocuments(loadState(), readCurrentSettings());
-    setSavedBackupName(name);
-    onNotify(name ? t("backupSaved", lang) : t("backupSaveError", lang));
   };
 
   const onRestorePick = () => {
@@ -405,9 +396,6 @@ function SettingsPanel({
                 className={`w-full rounded-xl border px-4 py-3 text-sm font-semibold ${th.card} ${th.accent} active:scale-[0.98] transition`}>
                 {t("backupNow", lang)}
               </button>
-              {savedBackupName && (
-                <p className="text-xs mt-2 break-all text-center" style={{ color: th.accent }}>{savedBackupName}</p>
-              )}
             </div>
 
             <div className={`rounded-2xl border p-4 ${th.card}`}>
@@ -509,10 +497,6 @@ function SettingsPanel({
             <button onClick={doBackupShare}
               className={`w-full rounded-xl border px-4 py-3 text-sm font-semibold ${th.card} ${th.accent} active:scale-[0.98] transition`}>
               {t("backupOptionShare", lang)}
-            </button>
-            <button onClick={doBackupSave}
-              className={`w-full rounded-xl border px-4 py-3 text-sm font-semibold ${th.card} ${th.accent2} active:scale-[0.98] transition`}>
-              {t("backupOptionSave", lang)}
             </button>
             <button onClick={() => setShowBackupOptions(false)}
               className={`w-full rounded-xl border px-4 py-2.5 text-xs font-semibold ${th.card} ${th.textMuted} active:scale-[0.98] transition`}>
