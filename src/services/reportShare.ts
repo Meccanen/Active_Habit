@@ -35,6 +35,33 @@ function filename(ext: string): string {
 /** Paylaşım görüntüsünde hariç tutulacak sınıf (butonlar). */
 const SHARE_ROW_CLASS = "share-row";
 
+/**
+ * Klonlanmış dokümandaki rapor bloğunu "baskı dostu" beyaz temaya dönüştürür:
+ * - Tema/klas arka plan renkleri kaldırılır → saf beyaz zemin
+ *   (tema sınıflarından gelen geniş koyu/gri alanlar mürekkep israfıdır).
+ * - Metinler koyulaştırılır (beyaz zemin üzerinde okunur).
+ * - Kenarlıklı hücrelere belirgin gri çizgi verilir (tablo görünümü).
+ * - İnline stili olan renkli öğeler (grafik barları, ilerleme şeritleri)
+ *   korunur — grafik desteği ve renkli ikon/zenginlik kaybolmaz.
+ */
+function applyPrintStyle(target: HTMLElement, clonedDoc: Document): void {
+  const all = target.querySelectorAll<HTMLElement>("*");
+  all.forEach((el) => {
+    const bg = el.style.background;
+    if (bg) {
+      // İnline düz renk (blok/kart arka planı) → beyaza; gradyan (bar) → korunur.
+      if (!bg.includes("gradient")) el.style.background = "transparent";
+    } else if (!el.style.backgroundColor || el.style.backgroundColor.startsWith("rgba")) {
+      // Class'tan gelen arka planlar veya ilerleme şeridi izi → beyaza.
+      el.style.backgroundColor = "transparent";
+    }
+    el.style.color = "#111827";
+    const cs = clonedDoc.defaultView?.getComputedStyle(el);
+    if (cs && parseFloat(cs.borderTopWidth) > 0) el.style.borderColor = "#d1d5db";
+  });
+  target.style.backgroundColor = "transparent";
+}
+
 /** HTML bloğunu görüntüye çevirir; başlık/kaynak ekler, butonları atlar. */
 async function captureCanvas(element: HTMLElement, opts: ReportBlockOptions): Promise<HTMLCanvasElement> {
   element.setAttribute("data-capture", "report");
@@ -48,9 +75,11 @@ async function captureCanvas(element: HTMLElement, opts: ReportBlockOptions): Pr
       onclone: (clonedDoc) => {
         const target = clonedDoc.querySelector("[data-capture='report']") as HTMLElement | null;
         if (!target) return;
+        applyPrintStyle(target, clonedDoc);
+
         const header = clonedDoc.createElement("div");
         header.style.cssText =
-          "display:flex;justify-content:center;align-items:center;gap:12px;padding:16px 20px 10px;border-bottom:1px solid #f3f4f6;";
+          "display:flex;justify-content:center;align-items:center;gap:12px;padding:16px 20px 10px;border-bottom:1px solid #e5e7eb;";
         const left = clonedDoc.createElement("span");
         left.style.cssText = "font-size:16px;font-weight:800;color:#111827;";
         left.textContent = opts.appName;
@@ -63,7 +92,7 @@ async function captureCanvas(element: HTMLElement, opts: ReportBlockOptions): Pr
 
         const footer = clonedDoc.createElement("div");
         footer.style.cssText =
-          "padding:8px 18px 12px;margin-top:8px;border-top:1px solid #f3f4f6;font-size:11px;color:#9ca3af;text-align:center;";
+          "padding:8px 18px 12px;margin-top:8px;border-top:1px solid #e5e7eb;font-size:11px;color:#9ca3af;text-align:center;";
         footer.textContent = opts.footer;
         target.appendChild(footer);
       },

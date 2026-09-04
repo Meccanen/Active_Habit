@@ -221,7 +221,7 @@ const en: Record<string, string> = {
   sharePdf: "Share PDF",
   sharing: "Sharing…",
   reportSource: "Created with Active Habit Tracker",
-  fullReportTitle: "Full Report (A4)",
+  fullReportTitle: "Full Report",
 
   backupTab: "Backup",
   backupTitle: "Backup",
@@ -457,7 +457,7 @@ const de: Record<string, string> = {
   sharePdf: "PDF teilen",
   sharing: "Wird geteilt…",
   reportSource: "Erstellt mit Active Habit Tracker",
-  fullReportTitle: "Gesamtbericht (A4)",
+  fullReportTitle: "Gesamtbericht",
 
   backupTab: "Sicherung",
   backupTitle: "Sicherung",
@@ -694,7 +694,7 @@ const tr: Record<string, string> = {
   sharePdf: "PDF paylaş",
   sharing: "Paylaşılıyor…",
   reportSource: "Active Habit Tracker ile oluşturuldu",
-  fullReportTitle: "Tüm Rapor (A4)",
+  fullReportTitle: "Tüm Rapor",
 
   backupTab: "Yedekleme",
   backupTitle: "Yedekleme",
@@ -930,7 +930,7 @@ const ar: Record<string, string> = {
   sharePdf: "مشاركة PDF",
   sharing: "جارٍ المشاركة…",
   reportSource: "أُنشئ باستخدام Active Habit Tracker",
-  fullReportTitle: "التقرير الكامل (A4)",
+  fullReportTitle: "التقرير الكامل",
 
   backupTab: "نسخ احتياطي",
   backupTitle: "نسخ احتياطي",
@@ -1166,7 +1166,7 @@ const ur: Record<string, string> = {
   sharePdf: "PDF شیئر کریں",
   sharing: "شیئر ہو رہا ہے…",
   reportSource: "Active Habit Tracker کے ساتھ بنایا گیا",
-  fullReportTitle: "مکمل رپورٹ (A4)",
+  fullReportTitle: "مکمل رپورٹ",
 
   backupTab: "بیک اپ",
   backupTitle: "بیک اپ",
