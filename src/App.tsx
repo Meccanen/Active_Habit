@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "motion/react";
 import {
   Check, Settings, Palette, X, Plus, Trash2, Pencil, Flame, Calendar,
   BarChart3, Trophy, ChevronRight, ChevronLeft, Zap, Shield,
-  Mail, Lock, Star, Sparkles, Download, Upload,
+  Mail, Lock, Star, Sparkles, Download, Upload, FileImage, FileText,
 } from "lucide-react";
 import type { Habit, Challenge, ChallengeTemplate, Unit, AppState } from "./types";
 import { t, detectLanguage, LangCode } from "./utils/i18n";
@@ -32,6 +32,7 @@ import {
   exportBackupWithShare, readCurrentSettings, parseBackup,
   type BackupSettings,
 } from "./services/backupService";
+import { shareReportBlockAsImage, shareReportBlockAsPdf } from "./services/reportShare";
 
 export type FontScale = "normal" | "large" | "xlarge";
 
@@ -1185,10 +1186,55 @@ function StatsModal({ habits, logs, onClose, th, lang }: {
 // GELİŞMİŞ İSTATİSTİKLER MODALI (uzun dönem grafik + ortalamalar + seriler)
 // Şu an reklamsız açılır; ödüllü reklam kilidi bu modalın ÖNÜNE sonra eklenir.
 // ============================================================================
+function ShareRow({ target, share, shareId, sharing, th, lang }: {
+  target: React.RefObject<HTMLDivElement | null>;
+  share: (mode: "image" | "pdf", ref: React.RefObject<HTMLDivElement | null>, id: number) => void;
+  shareId: number; sharing: number | null; th: typeof THEMES[ThemeKey]; lang: LangCode;
+}) {
+  const busy = sharing === shareId;
+  return (
+    <div className="flex items-center gap-2 pt-1">
+      <button
+        onClick={() => share("image", target, shareId)}
+        disabled={busy}
+        className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold ${th.card} ${th.accent} active:scale-[0.97] transition disabled:opacity-50`}>
+        <FileImage size={13} /> {t("shareImage", lang)}
+      </button>
+      <button
+        onClick={() => share("pdf", target, shareId)}
+        disabled={busy}
+        className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold ${th.card} ${th.accent2} active:scale-[0.97] transition disabled:opacity-50`}>
+        <FileText size={13} /> {t("sharePdf", lang)}
+      </button>
+      {busy && <span className={`text-[11px] ${th.textMuted}`}>{t("sharing", lang)}</span>}
+    </div>
+  );
+}
+
 function DetailStatsModal({ habits, logs, onClose, th, lang }: {
   habits: Habit[]; logs: Parameters<typeof habitLogFor>[1];
   onClose: () => void; th: typeof THEMES[ThemeKey]; lang: LangCode;
 }) {
+  const summaryRef = useRef<HTMLDivElement>(null);
+  const last30Ref = useRef<HTMLDivElement>(null);
+  const perHabitRef = useRef<HTMLDivElement>(null);
+  const consistentRef = useRef<HTMLDivElement>(null);
+  const [sharing, setSharing] = useState<number | null>(null);
+
+  const share = async (mode: "image" | "pdf", ref: React.RefObject<HTMLDivElement | null>, shareId: number) => {
+    const el = ref.current;
+    if (!el) return;
+    setSharing(shareId);
+    try {
+      if (mode === "image") await shareReportBlockAsImage(el);
+      else await shareReportBlockAsPdf(el);
+    } catch (e) {
+      console.error("[reportShare]", e);
+    } finally {
+      setSharing(null);
+    }
+  };
+
   const today = todayStr();
   const maxStreak = useMemo(() => getMaxCurrentStreak(habits, logs, today), [habits, logs, today]);
   const last30 = useMemo(() => getLongRangeDays(habits, logs, 30, today), [habits, logs, today]);
@@ -1223,26 +1269,30 @@ function DetailStatsModal({ habits, logs, onClose, th, lang }: {
       <ModalHeader title={t("advancedStats", lang)} onClose={onClose} th={th} />
       <div className="overflow-y-auto flex-1 p-5 space-y-4">
         {/* Üst özet: akım zincir + ortalamalar */}
-        <div className="grid grid-cols-3 gap-2.5">
-          <div className={`flex flex-col items-center gap-1 rounded-2xl border p-3.5 ${th.card}`}>
-            <Flame size={18} className={th.accent3} />
-            <span className={`text-lg font-bold ${th.accent3}`}>{maxStreak}</span>
-            <span className={`text-[10px] text-center leading-tight ${th.textMuted}`}>{t("yourStreak", lang)}</span>
+        <div ref={summaryRef} className="space-y-1">
+          <p className={`text-xs uppercase tracking-wide ${th.textMuted}`}>{t("summaryTitle", lang)}</p>
+          <div className="grid grid-cols-3 gap-2.5" style={{ background: th.bg }}>
+            <div className={`flex flex-col items-center gap-1 rounded-2xl border p-3.5 ${th.card}`}>
+              <Flame size={18} className={th.accent3} />
+              <span className={`text-lg font-bold ${th.accent3}`}>{maxStreak}</span>
+              <span className={`text-[10px] text-center leading-tight ${th.textMuted}`}>{t("yourStreak", lang)}</span>
+            </div>
+            <div className={`flex flex-col items-center gap-1 rounded-2xl border p-3.5 ${th.card}`}>
+              <span className={`text-lg font-bold ${th.accent}`}>%{avg7}</span>
+              <span className={`text-[10px] text-center leading-tight ${th.textMuted}`}>{t("avg7", lang)}</span>
+            </div>
+            <div className={`flex flex-col items-center gap-1 rounded-2xl border p-3.5 ${th.card}`}>
+              <span className={`text-lg font-bold ${th.accent2}`}>%{avg30}</span>
+              <span className={`text-[10px] text-center leading-tight ${th.textMuted}`}>{t("avg30", lang)}</span>
+            </div>
           </div>
-          <div className={`flex flex-col items-center gap-1 rounded-2xl border p-3.5 ${th.card}`}>
-            <span className={`text-lg font-bold ${th.accent}`}>%{avg7}</span>
-            <span className={`text-[10px] text-center leading-tight ${th.textMuted}`}>{t("avg7", lang)}</span>
-          </div>
-          <div className={`flex flex-col items-center gap-1 rounded-2xl border p-3.5 ${th.card}`}>
-            <span className={`text-lg font-bold ${th.accent2}`}>%{avg30}</span>
-            <span className={`text-[10px] text-center leading-tight ${th.textMuted}`}>{t("avg30", lang)}</span>
-          </div>
+          <ShareRow target={summaryRef} share={share} shareId={1} sharing={sharing} th={th} lang={lang} />
         </div>
 
         {/* Son 30 gün grafiği (6 × 5 gün dilimi) */}
-        <div>
-          <p className={`text-xs uppercase tracking-wide mb-2 ${th.textMuted}`}>{t("last30Days", lang)}</p>
-          <div className={`rounded-2xl border p-4 ${th.card}`}>
+        <div ref={last30Ref} className="space-y-1">
+          <p className={`text-xs uppercase tracking-wide ${th.textMuted}`}>{t("last30Days", lang)}</p>
+          <div className={`rounded-2xl border p-4 ${th.card}`} style={{ background: th.bg }}>
             <div className="flex items-end justify-between gap-2 h-28">
               {buckets.map((b) => (
                 <div key={b.label} className="flex-1 flex flex-col items-center gap-1 min-w-0">
@@ -1256,11 +1306,12 @@ function DetailStatsModal({ habits, logs, onClose, th, lang }: {
               ))}
             </div>
           </div>
+          <ShareRow target={last30Ref} share={share} shareId={2} sharing={sharing} th={th} lang={lang} />
         </div>
 
         {/* Alışkanlık bazında seri */}
-        <div>
-          <p className={`text-xs uppercase tracking-wide mb-2 ${th.textMuted}`}>{t("perHabit", lang)}</p>
+        <div ref={perHabitRef} className="space-y-1">
+          <p className={`text-xs uppercase tracking-wide ${th.textMuted}`}>{t("perHabit", lang)}</p>
           <div className={`rounded-2xl border p-2 ${th.card} space-y-1`}>
             {habitStreaks.length === 0 && (
               <p className={`text-xs text-center py-3 ${th.textMuted}`}>{t("noHabits", lang)}</p>
@@ -1283,12 +1334,13 @@ function DetailStatsModal({ habits, logs, onClose, th, lang }: {
               );
             })}
           </div>
+          <ShareRow target={perHabitRef} share={share} shareId={3} sharing={sharing} th={th} lang={lang} />
         </div>
 
         {/* En tutarlı alışkanlıklar */}
-        <div>
-          <p className={`text-xs uppercase tracking-wide mb-2 ${th.textMuted}`}>{t("consistentTitle", lang)}</p>
-          <div className={`rounded-2xl border p-3 ${th.card} space-y-2`}>
+        <div ref={consistentRef} className="space-y-1">
+          <p className={`text-xs uppercase tracking-wide ${th.textMuted}`}>{t("consistentTitle", lang)}</p>
+          <div className={`rounded-2xl border p-3 ${th.card} space-y-2`} style={{ background: th.bg }}>
             {consistent.length === 0 && (
               <p className={`text-xs text-center py-3 ${th.textMuted}`}>{t("noHabits", lang)}</p>
             )}
@@ -1310,6 +1362,7 @@ function DetailStatsModal({ habits, logs, onClose, th, lang }: {
               </div>
             ))}
           </div>
+          <ShareRow target={consistentRef} share={share} shareId={4} sharing={sharing} th={th} lang={lang} />
         </div>
       </div>
     </Modal>
