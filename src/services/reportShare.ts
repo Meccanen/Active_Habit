@@ -11,12 +11,66 @@ const REPORT_DIR = "reports";
  * bloğunu (ör. son 30 gün grafiği, alışkanlık serileri) HTML'den görüntüye
  * çevirip PNG veya PDF olarak paylaşım menüsüyle gönderir.
  *
+ * Paylaşılan görüntüye, ana arayüze dokunmadan (html2canvas'ın klonlama
+ * ortamı üzerinden) üstte başlık + tarih ve altta kaynak satırı eklenir;
+ * paylaşım butonları (`.share-row`) görüntüden hariç tutulur.
+ *
  * Tüm görüntüleme cihazda yapılır; hiçbir veri sunucuya gönderilmez.
  */
+
+export interface ReportBlockOptions {
+  /** Üst başlıkta gösterilen uygulama adı. */
+  appName: string;
+  /** Üst başlığın sağında gösterilen tarih/metin (yerelleştirilmiş). */
+  dateLabel: string;
+  /** Görüntünün altında gösterilen kaynak satırı. */
+  footer: string;
+}
 
 function filename(ext: string): string {
   const d = new Date().toISOString().slice(0, 10);
   return `habit-report-${d}.${ext}`;
+}
+
+/** Paylaşım görüntüsünde hariç tutulacak sınıf (butonlar). */
+const SHARE_ROW_CLASS = "share-row";
+
+/** HTML bloğunu görüntüye çevirir; başlık/kaynak ekler, butonları atlar. */
+async function captureCanvas(element: HTMLElement, opts: ReportBlockOptions): Promise<HTMLCanvasElement> {
+  element.setAttribute("data-capture", "report");
+  try {
+    return await html2canvas(element, {
+      backgroundColor: "#ffffff",
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      ignoreElements: (el) => el.classList?.contains(SHARE_ROW_CLASS) ?? false,
+      onclone: (clonedDoc) => {
+        const target = clonedDoc.querySelector("[data-capture='report']") as HTMLElement | null;
+        if (!target) return;
+        const header = clonedDoc.createElement("div");
+        header.style.cssText =
+          "display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 18px 6px;";
+        const left = clonedDoc.createElement("span");
+        left.style.cssText = "font-size:15px;font-weight:800;color:#111827;";
+        left.textContent = opts.appName;
+        const right = clonedDoc.createElement("span");
+        right.style.cssText = "font-size:11px;color:#9ca3af;";
+        right.textContent = opts.dateLabel;
+        header.appendChild(left);
+        header.appendChild(right);
+        target.prepend(header);
+
+        const footer = clonedDoc.createElement("div");
+        footer.style.cssText =
+          "padding:8px 18px 12px;margin-top:8px;border-top:1px solid #f3f4f6;font-size:11px;color:#9ca3af;text-align:center;";
+        footer.textContent = opts.footer;
+        target.appendChild(footer);
+      },
+    });
+  } finally {
+    element.removeAttribute("data-capture");
+  }
 }
 
 /** Geçici dosyayı diske yazıp paylaşım menüsüyle gönderir. Web'de indirir. */
@@ -63,13 +117,8 @@ function blobToBase64(blob: Blob): Promise<string> {
 }
 
 /** Bir HTML bloğunu PNG görüntüsüne çevirip paylaşır. */
-export async function shareReportBlockAsImage(element: HTMLElement): Promise<void> {
-  const canvas = await html2canvas(element, {
-    backgroundColor: "#ffffff",
-    scale: 2,
-    useCORS: true,
-    logging: false,
-  });
+export async function shareReportBlockAsImage(element: HTMLElement, opts: ReportBlockOptions): Promise<void> {
+  const canvas = await captureCanvas(element, opts);
   const blob = await new Promise<Blob>((resolve, reject) => {
     canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("toBlob failed"))), "image/png");
   });
@@ -77,13 +126,8 @@ export async function shareReportBlockAsImage(element: HTMLElement): Promise<voi
 }
 
 /** Bir HTML bloğunu tek sayfalık PDF'e çevirip paylaşır. */
-export async function shareReportBlockAsPdf(element: HTMLElement): Promise<void> {
-  const canvas = await html2canvas(element, {
-    backgroundColor: "#ffffff",
-    scale: 2,
-    useCORS: true,
-    logging: false,
-  });
+export async function shareReportBlockAsPdf(element: HTMLElement, opts: ReportBlockOptions): Promise<void> {
+  const canvas = await captureCanvas(element, opts);
   const imgData = canvas.toDataURL("image/png");
   const pdf = new jsPDF({
     orientation: canvas.width > canvas.height ? "landscape" : "portrait",

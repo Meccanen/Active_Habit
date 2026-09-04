@@ -32,7 +32,7 @@ import {
   exportBackupWithShare, readCurrentSettings, parseBackup,
   type BackupSettings,
 } from "./services/backupService";
-import { shareReportBlockAsImage, shareReportBlockAsPdf } from "./services/reportShare";
+import { shareReportBlockAsImage, shareReportBlockAsPdf, type ReportBlockOptions } from "./services/reportShare";
 
 export type FontScale = "normal" | "large" | "xlarge";
 
@@ -1193,7 +1193,7 @@ function ShareRow({ target, share, shareId, sharing, th, lang }: {
 }) {
   const busy = sharing === shareId;
   return (
-    <div className="flex items-center gap-2 pt-1">
+    <div className="share-row flex items-center gap-2 pt-1">
       <button
         onClick={() => share("image", target, shareId)}
         disabled={busy}
@@ -1227,9 +1227,15 @@ function DetailStatsModal({ habits, logs, onClose, th, lang }: {
     if (!el) return;
     setSharing(shareId);
     setShareError(null);
+    const dateLabel = new Date().toLocaleDateString(lang, { day: "2-digit", month: "short", year: "numeric" });
+    const opts: ReportBlockOptions = {
+      appName: t("appName", lang),
+      dateLabel,
+      footer: t("reportSource", lang),
+    };
     try {
-      if (mode === "image") await shareReportBlockAsImage(el);
-      else await shareReportBlockAsPdf(el);
+      if (mode === "image") await shareReportBlockAsImage(el, opts);
+      else await shareReportBlockAsPdf(el, opts);
     } catch (e) {
       console.error("[reportShare]", e);
       setShareError(String(e instanceof Error ? e.message : e));
@@ -1276,16 +1282,18 @@ function DetailStatsModal({ habits, logs, onClose, th, lang }: {
           <p className={`text-xs uppercase tracking-wide ${th.textMuted}`}>{t("summaryTitle", lang)}</p>
           <div className="grid grid-cols-3 gap-2.5" style={{ background: th.bg }}>
             <div className={`flex flex-col items-center gap-1 rounded-2xl border p-3.5 ${th.card}`}>
-              <Flame size={18} className={th.accent3} />
-              <span className={`text-lg font-bold ${th.accent3}`}>{maxStreak}</span>
+              <span className="flex items-center justify-center w-7 h-7 rounded-full opacity-20" style={{ background: th.accent3 }}>
+                <Flame size={14} className="text-black" />
+              </span>
+              <span className={`text-xl font-bold ${th.accent3}`}>{maxStreak}</span>
               <span className={`text-[10px] text-center leading-tight ${th.textMuted}`}>{t("yourStreak", lang)}</span>
             </div>
             <div className={`flex flex-col items-center gap-1 rounded-2xl border p-3.5 ${th.card}`}>
-              <span className={`text-lg font-bold ${th.accent}`}>%{avg7}</span>
+              <span className={`text-xl font-bold ${th.accent}`}>%{avg7}</span>
               <span className={`text-[10px] text-center leading-tight ${th.textMuted}`}>{t("avg7", lang)}</span>
             </div>
             <div className={`flex flex-col items-center gap-1 rounded-2xl border p-3.5 ${th.card}`}>
-              <span className={`text-lg font-bold ${th.accent2}`}>%{avg30}</span>
+              <span className={`text-xl font-bold ${th.accent2}`}>%{avg30}</span>
               <span className={`text-[10px] text-center leading-tight ${th.textMuted}`}>{t("avg30", lang)}</span>
             </div>
           </div>
@@ -1296,14 +1304,19 @@ function DetailStatsModal({ habits, logs, onClose, th, lang }: {
         <div ref={last30Ref} className="space-y-1">
           <p className={`text-xs uppercase tracking-wide ${th.textMuted}`}>{t("last30Days", lang)}</p>
           <div className={`rounded-2xl border p-4 ${th.card}`} style={{ background: th.bg }}>
-            <div className="flex items-end justify-between gap-2 h-28">
+            <div className="flex items-end justify-between gap-2.5 h-32">
               {buckets.map((b) => (
-                <div key={b.label} className="flex-1 flex flex-col items-center gap-1 min-w-0">
+                <div key={b.label} className="flex-1 flex flex-col items-center gap-1.5 min-w-0">
                   <span className={`text-[10px] font-semibold ${b.due === 0 ? th.textMuted : th.accent}`}>
-                    {b.due === 0 ? "·" : b.done + "/" + b.due}
+                    {b.due === 0 ? "—" : "%" + b.pct}
                   </span>
-                  <div className="w-full rounded-md"
-                    style={{ backgroundColor: th.accent, height: `${Math.max(4, (b.pct / maxBucket) * 70)}px`, opacity: b.due === 0 ? 0.15 : 0.35 + 0.65 * (b.pct / 100) }} />
+                  <div className="w-full rounded-t-lg"
+                    style={{
+                      height: `${Math.max(5, (b.pct / maxBucket) * 78)}px`,
+                      background: b.due === 0
+                        ? "rgba(0,0,0,0.08)"
+                        : `linear-gradient(180deg, ${th.accent} 0%, ${th.accent3} 100%)`,
+                    }} />
                   <span className={`text-[9px] uppercase ${th.textMuted}`}>{b.label}</span>
                 </div>
               ))}

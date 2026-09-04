@@ -220,6 +220,7 @@ const en: Record<string, string> = {
   shareImage: "Share image",
   sharePdf: "Share PDF",
   sharing: "Sharing…",
+  reportSource: "Created with Active Habit Tracker",
 
   backupTab: "Backup",
   backupTitle: "Backup",
@@ -454,6 +455,7 @@ const de: Record<string, string> = {
   shareImage: "Bild teilen",
   sharePdf: "PDF teilen",
   sharing: "Wird geteilt…",
+  reportSource: "Erstellt mit Active Habit Tracker",
 
   backupTab: "Sicherung",
   backupTitle: "Sicherung",
@@ -689,6 +691,7 @@ const tr: Record<string, string> = {
   shareImage: "Resim paylaş",
   sharePdf: "PDF paylaş",
   sharing: "Paylaşılıyor…",
+  reportSource: "Active Habit Tracker ile oluşturuldu",
 
   backupTab: "Yedekleme",
   backupTitle: "Yedekleme",
@@ -923,6 +926,7 @@ const ar: Record<string, string> = {
   shareImage: "مشاركة الصورة",
   sharePdf: "مشاركة PDF",
   sharing: "جارٍ المشاركة…",
+  reportSource: "أُنشئ باستخدام Active Habit Tracker",
 
   backupTab: "نسخ احتياطي",
   backupTitle: "نسخ احتياطي",
@@ -1157,6 +1161,7 @@ const ur: Record<string, string> = {
   shareImage: "تصویر شیئر کریں",
   sharePdf: "PDF شیئر کریں",
   sharing: "شیئر ہو رہا ہے…",
+  reportSource: "Active Habit Tracker کے ساتھ بنایا گیا",
 
   backupTab: "بیک اپ",
   backupTitle: "بیک اپ",
