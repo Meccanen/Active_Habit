@@ -1219,20 +1219,50 @@ function DetailStatsModal({ habits, logs, onClose, th, lang }: {
   const last30Ref = useRef<HTMLDivElement>(null);
   const perHabitRef = useRef<HTMLDivElement>(null);
   const consistentRef = useRef<HTMLDivElement>(null);
+  const fullReportRef = useRef<HTMLDivElement>(null);
   const [sharing, setSharing] = useState<number | null>(null);
   const [shareError, setShareError] = useState<string | null>(null);
+
+  const buildShareOpts = (): ReportBlockOptions => {
+    const dateLabel = new Date().toLocaleDateString(lang, { day: "2-digit", month: "short", year: "numeric" });
+    return {
+      appName: t("appName", lang),
+      dateLabel,
+      footer: t("reportSource", lang),
+    };
+  };
+
+  const shareFull = async (mode: "image" | "pdf") => {
+    const a4 = fullReportRef.current;
+    if (!a4) return;
+    setSharing(0);
+    setShareError(null);
+    try {
+      a4.innerHTML = "";
+      for (const r of [summaryRef, last30Ref, perHabitRef, consistentRef]) {
+        if (!r.current) continue;
+        const clone = r.current.cloneNode(true) as HTMLElement;
+        clone.querySelectorAll(".share-row").forEach((el) => el.remove());
+        clone.style.cssText = "margin:0 0 20px;";
+        a4.appendChild(clone);
+      }
+      const opts = buildShareOpts();
+      if (mode === "image") await shareReportBlockAsImage(a4, opts);
+      else await shareReportBlockAsPdf(a4, opts);
+    } catch (e) {
+      console.error("[reportShare]", e);
+      setShareError(String(e instanceof Error ? e.message : e));
+    } finally {
+      setSharing(null);
+    }
+  };
 
   const share = async (mode: "image" | "pdf", ref: React.RefObject<HTMLDivElement | null>, shareId: number) => {
     const el = ref.current;
     if (!el) return;
     setSharing(shareId);
     setShareError(null);
-    const dateLabel = new Date().toLocaleDateString(lang, { day: "2-digit", month: "short", year: "numeric" });
-    const opts: ReportBlockOptions = {
-      appName: t("appName", lang),
-      dateLabel,
-      footer: t("reportSource", lang),
-    };
+    const opts = buildShareOpts();
     try {
       if (mode === "image") await shareReportBlockAsImage(el, opts);
       else await shareReportBlockAsPdf(el, opts);
@@ -1277,6 +1307,28 @@ function DetailStatsModal({ habits, logs, onClose, th, lang }: {
     <Modal onClose={onClose} th={th}>
       <ModalHeader title={t("advancedStats", lang)} onClose={onClose} th={th} />
       <div className="overflow-y-auto flex-1 p-5 space-y-4">
+        {/* Tüm rapor (A4) paylaşımı */}
+        <div className={`rounded-2xl border p-3 ${th.card}`}>
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <p className={`text-xs uppercase tracking-wide ${th.textMuted}`}>{t("fullReportTitle", lang)}</p>
+            {sharing === 0 && <span className={`text-[11px] ${th.textMuted}`}>{t("sharing", lang)}</span>}
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => shareFull("image")}
+              disabled={sharing !== null}
+              className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold ${th.card} ${th.accent} active:scale-[0.97] transition disabled:opacity-50`}>
+              <FileImage size={14} /> {t("shareImage", lang)}
+            </button>
+            <button
+              onClick={() => shareFull("pdf")}
+              disabled={sharing !== null}
+              className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold ${th.card} ${th.accent2} active:scale-[0.97] transition disabled:opacity-50`}>
+              <FileText size={14} /> {t("sharePdf", lang)}
+            </button>
+          </div>
+        </div>
+
         {/* Üst özet: akım zincir + ortalamalar */}
         <div ref={summaryRef} className="space-y-1">
           <p className={`text-xs uppercase tracking-wide ${th.textMuted}`}>{t("summaryTitle", lang)}</p>
@@ -1384,6 +1436,13 @@ function DetailStatsModal({ habits, logs, onClose, th, lang }: {
           <p className="text-[11px] text-red-500 break-all px-1">{shareError}</p>
         )}
       </div>
+
+      {/* A4 "Tüm Rapor" paylaşım alanı — ekran dışı, görüntü yakalamada kullanılır */}
+      <div
+        ref={fullReportRef}
+        className="pointer-events-none fixed top-0 left-[-9999px] w-[794px] min-h-[1123px] bg-white p-6"
+        style={{ zIndex: 0 }}
+      />
     </Modal>
   );
 }

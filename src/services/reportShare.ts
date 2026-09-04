@@ -50,9 +50,9 @@ async function captureCanvas(element: HTMLElement, opts: ReportBlockOptions): Pr
         if (!target) return;
         const header = clonedDoc.createElement("div");
         header.style.cssText =
-          "display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 18px 6px;";
+          "display:flex;justify-content:center;align-items:center;gap:12px;padding:16px 20px 10px;border-bottom:1px solid #f3f4f6;";
         const left = clonedDoc.createElement("span");
-        left.style.cssText = "font-size:15px;font-weight:800;color:#111827;";
+        left.style.cssText = "font-size:16px;font-weight:800;color:#111827;";
         left.textContent = opts.appName;
         const right = clonedDoc.createElement("span");
         right.style.cssText = "font-size:11px;color:#9ca3af;";
