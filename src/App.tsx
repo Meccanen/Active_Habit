@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef, Fragment } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Check, Settings, Palette, X, Plus, Trash2, Pencil, Flame, Calendar,
-  BarChart3, Trophy, ChevronRight, ChevronLeft, Zap, Shield,
+  BarChart3, Trophy, ChevronRight, ChevronLeft, ChevronDown, Zap, Shield,
   Mail, Lock, Star, Sparkles, Download, Upload, FileImage, FileText,
 } from "lucide-react";
 import type { Habit, Challenge, ChallengeTemplate, Unit, AppState } from "./types";
@@ -241,6 +241,20 @@ function colorClass(habit: Habit, th: typeof THEMES[ThemeKey]): string {
     case "accent3": return th.accent3;
     default: return habit.color;
   }
+}
+
+/** Haftalık habit'ler için gün noktaları (günler "weekly" dalında tanımlıdır). */
+function renderWeekdayDots(h: Habit, cc: string) {
+  const freq = h.frequency;
+  if (freq.kind !== "weekly") return null;
+  const days = freq.days;
+  return (
+    <div className="flex gap-0.5">
+      {[1, 2, 3, 4, 5, 6, 0].map((d) => (
+        <span key={d} className={`w-1.5 h-1.5 rounded-full ${days.includes(d) ? cc + " bg-current" : "bg-black/15"}`} />
+      ))}
+    </div>
+  );
 }
 
 // ============================================================================
@@ -1587,6 +1601,31 @@ export default function App() {
 
   const activeHabits = useMemo(() => getActiveHabits(state), [state]);
 
+  // Hazır paketlerden gelen alışkanlıklar paket adı altında gruplanır;
+  // paketsiz (kullanıcı tarafından eklenen) alışkanlıklar tek başına kalır.
+  const habitGroups = useMemo(() => {
+    const packs = new Map<string, Habit[]>();
+    const standalone: Habit[] = [];
+    for (const h of activeHabits) {
+      if (h.packId) {
+        const g = packs.get(h.packId);
+        if (g) g.push(h);
+        else packs.set(h.packId, [h]);
+      } else {
+        standalone.push(h);
+      }
+    }
+    return {
+      standalone,
+      packs: Array.from(packs.entries()).map(([id, habits]) => ({
+        id,
+        emoji: HABIT_SETS.find((s) => s.id === id)?.emoji ?? "📦",
+        nameKey: HABIT_SETS.find((s) => s.id === id)?.nameKey,
+        habits,
+      })),
+    };
+  }, [activeHabits]);
+
   // Zamanlayıcı saniyeleri günceller (startTime tabanlı, arka planda doğru)
   useEffect(() => {
     if (!timerRunning) return;
@@ -1623,6 +1662,185 @@ export default function App() {
   const [showDetailStats, setShowDetailStats] = useState(false);
   const [confirmDeleteHabit, setConfirmDeleteHabit] = useState<Habit | null>(null);
   const [habitSetPreview, setHabitSetPreview] = useState<HabitSetTemplate | null>(null);
+  const [expandedPacks, setExpandedPacks] = useState<Record<string, boolean>>({});
+  const togglePack = (id: string) => setExpandedPacks((p) => ({ ...p, [id]: !p[id] }));
+
+  // Tek bir alışkanlık kartı. Hem tek başına hem paket içinde kullanılır.
+  const renderHabitCard = (h: Habit) => {
+    const info = habitLogFor(h, logs, today);
+    const streak = getCurrentStreak(h, logs, today);
+    const cc = colorClass(h, th);
+    return (
+      <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+        className={`rounded-2xl border p-4 ${th.card}`}>
+        {h.unit === "minutes" ? (
+          <div className="space-y-2">
+            <div className="flex items-center gap-3">
+              <span className={`shrink-0 w-10 h-10 rounded-xl border flex items-center justify-center ${cc}`}>
+                {info.complete ? <Check size={20} className="text-slate-950" /> : <span className="text-lg">{h.emoji}</span>}
+              </span>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <p className={`text-sm font-semibold truncate ${th.textPrimary}`}>{t(h.name, lang)}</p>
+                  {renderWeekdayDots(h, cc)}
+                </div>
+                <div className="flex items-center gap-3 mt-0.5">
+                  <span className={`flex items-center gap-1 text-xs font-semibold ${streak > 0 ? "text-orange-400" : th.textMuted}`}>
+                    <Flame size={13} /> {t("streakDays", lang, { n: String(streak) })}
+                  </span>
+                  <span className={`text-xs ${th.textMuted}`}>{info.count} / {h.targetPerDay} {t("minutes", lang)}</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                <button onClick={() => { setEditingHabit(h); setShowHabitModal(true); }}
+                  className={`p-2 rounded-xl ${th.cardHover} ${th.textMuted}`}><Pencil size={16} /></button>
+                <button onClick={() => setConfirmDeleteHabit(h)}
+                  className={`p-2 rounded-xl ${th.cardHover} text-red-500/70`}><Trash2 size={16} /></button>
+              </div>
+            </div>
+
+            <div className={`rounded-xl border p-3 ${th.card} ${timerFor === h.id && timerReached ? "border-green-500/60 animate-pulse" : ""}`}>
+              {timerFor === h.id && timerReached && (
+                <div className="flex items-center justify-center gap-2 mb-2 py-1">
+                  <span className={`font-bold text-base ${th.accent}`}>🎉 {t("timerDone", lang)}</span>
+                </div>
+              )}
+              {timerFor === h.id && timerRunning && !timerReached && (
+                <div className="flex items-center justify-center gap-2 mb-2">
+                  <span className={`font-mono text-lg font-bold tabular-nums ${th.accent}`}>
+                    {formatTimer(elapsedMs)}
+                  </span>
+                  <span className={`text-xs ${th.textMuted}`}>/ {h.targetPerDay} {t("minutes", lang)}</span>
+                </div>
+              )}
+              {timerFor === h.id && !timerRunning && !timerReached && (
+                <div className="flex items-center justify-center gap-2 mb-2">
+                  <span className={`font-mono text-lg font-bold tabular-nums ${th.textPrimary}`}>
+                    {formatTimer(elapsedMs)}
+                  </span>
+                  <span className={`text-xs ${th.textMuted}`}>/ {h.targetPerDay} {t("minutes", lang)}</span>
+                </div>
+              )}
+              <div className="flex items-center gap-2">
+                {timerReached ? (
+                  <button onClick={handleFinishTimer}
+                    className={`flex-1 py-2 rounded-xl text-sm font-bold border transition ${th.accent} animate-bounce`}>
+                    {t("finish", lang)}
+                  </button>
+                ) : timerFor !== h.id ? (
+                  <button onClick={() => handleStartTimer(h.id)} disabled={!info.due}
+                    className={`flex-1 py-2 rounded-xl text-sm font-bold border transition ${cc} ${info.due ? "" : "opacity-40"}`}>
+                    ▶ {t("startTimer", lang)}
+                  </button>
+                ) : timerRunning ? (
+                  <>
+                    <button onClick={handlePauseTimer}
+                      className={`flex-[2] py-2 rounded-xl text-sm font-bold border transition ${th.card} ${th.textSecondary}`}>
+                      ⏸ {t("pause", lang)}
+                    </button>
+                    <button onClick={() => handleFinishTimer()} disabled={!info.due}
+                      className={`flex-1 py-2 rounded-xl text-sm font-bold border transition ${th.accent} ${info.due ? "" : "opacity-40"}`}>
+                      {t("finish", lang)}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button onClick={handleResumeTimer}
+                      className={`flex-1 py-2 rounded-xl text-sm font-bold border transition ${th.accent}`}>
+                      ▶ {t("resume", lang)}
+                    </button>
+                    <button onClick={() => handleFinishTimer()} disabled={!info.due}
+                      className={`flex-1 py-2 rounded-xl text-sm font-bold border transition ${th.card} ${info.due ? "" : "opacity-40"}`}>
+                      {t("finish", lang)}
+                    </button>
+                  </>
+                )}
+                {timerFor === h.id && (
+                  <button onClick={handleResetTimer} title="reset"
+                    className={`p-2 rounded-xl ${th.cardHover} ${th.textMuted}`}><X size={16} /></button>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : (
+        <>
+          <div className="flex items-center gap-3">
+            <button onClick={() => handleToggleHabit(h.id, today)} disabled={!info.due}
+              className={`shrink-0 w-10 h-10 rounded-xl border flex items-center justify-center transition active:scale-90 ${cc} ${info.due ? "" : "opacity-40"}`}
+              style={info.complete ? { background: "currentColor" } : undefined}>
+              {info.complete ? (
+                <Check size={20} className="text-slate-950" />
+              ) : (
+                <span className="text-lg">{h.emoji}</span>
+              )}
+            </button>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <p className={`text-sm font-semibold truncate ${th.textPrimary}`}>{t(h.name, lang)}</p>
+                {renderWeekdayDots(h, cc)}
+              </div>
+              <div className="flex items-center gap-3 mt-0.5">
+                <span className={`flex items-center gap-1 text-xs font-semibold ${streak > 0 ? "text-orange-400" : th.textMuted}`}>
+                  <Flame size={13} /> {t("streakDays", lang, { n: String(streak) })}
+                </span>
+                {h.targetPerDay > 1 && (
+                  <span className={`text-xs ${th.textMuted}`}>{info.count}/{h.targetPerDay}</span>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-1 shrink-0">
+              <button onClick={() => { setEditingHabit(h); setShowHabitModal(true); }}
+                className={`p-2 rounded-xl ${th.cardHover} ${th.textMuted}`}><Pencil size={16} /></button>
+              <button onClick={() => setConfirmDeleteHabit(h)}
+                className={`p-2 rounded-xl ${th.cardHover} text-red-500/70`}><Trash2 size={16} /></button>
+            </div>
+          </div>
+        </>
+        )}
+      </motion.div>
+    );
+  };
+
+  // Aktif alışkanlık listesi: paketsizler + kapalı çekmece halindeki paketler.
+  const renderActiveList = () => {
+    return (
+      <>
+        {habitGroups.standalone.map((h) => (
+          <Fragment key={h.id}>{renderHabitCard(h)}</Fragment>
+        ))}
+        {habitGroups.packs.map((pack) => {
+          const isOpen = !!expandedPacks[pack.id];
+          const nameKey = pack.template?.nameKey ?? pack.id;
+          const done = pack.habits.filter((x) => habitLogFor(x, logs, today).complete).length;
+          return (
+            <div key={pack.id}>
+              <button onClick={() => togglePack(pack.id)}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl border transition ${th.card}`}>
+                <span className="text-lg">{pack.template?.emoji ?? "📦"}</span>
+                <span className={`flex-1 text-left text-sm font-bold truncate ${th.textPrimary}`}>{t(nameKey, lang)}</span>
+                <span className={`text-xs font-semibold ${done === pack.habits.length ? th.accent3 : th.textMuted}`}>
+                  {done}/{pack.habits.length}
+                </span>
+                <ChevronDown size={16} className={`shrink-0 transition-transform ${th.textMuted} ${isOpen ? "rotate-180" : ""}`} />
+              </button>
+              <AnimatePresence initial={false}>
+                {isOpen && (
+                  <motion.div key="body" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+                    <div className="pt-2 pr-0.5 pl-0.5 space-y-2.5">
+                      {pack.habits.map((x) => (
+                        <Fragment key={x.id}>{renderHabitCard(x)}</Fragment>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          );
+        })}
+      </>
+    );
+  };
   const [showGraceModal, setShowGraceModal] = useState(false);
   const [gracePayload, setGracePayload] = useState<{ usedGraceIds: string[]; resetIds: string[]; completedIds: string[] }>({ usedGraceIds: [], resetIds: [], completedIds: [] });
   const [toast, setToast] = useState("");
@@ -1960,152 +2178,7 @@ export default function App() {
           )}
 
           <div className="space-y-2.5">
-            {activeHabits.map((h) => {
-              const info = habitLogFor(h, logs, today);
-              const streak = getCurrentStreak(h, logs, today);
-              const cc = colorClass(h, th);
-              return (
-                <motion.div key={h.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
-                  className={`rounded-2xl border p-4 ${th.card}`}>
-                  {h.unit === "minutes" ? (
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-3">
-                        <span className={`shrink-0 w-10 h-10 rounded-xl border flex items-center justify-center ${cc}`}>
-                          {info.complete ? <Check size={20} className="text-slate-950" /> : <span className="text-lg">{h.emoji}</span>}
-                        </span>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <p className={`text-sm font-semibold truncate ${th.textPrimary}`}>{t(h.name, lang)}</p>
-                            {h.frequency.kind === "weekly" && (
-                              <div className="flex gap-0.5">
-                                {[1, 2, 3, 4, 5, 6, 0].map((d) => (
-                                  <span key={d} className={`w-1.5 h-1.5 rounded-full ${h.frequency.days.includes(d) ? cc + " bg-current" : "bg-black/15"}`} />
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-3 mt-0.5">
-                            <span className={`flex items-center gap-1 text-xs font-semibold ${streak > 0 ? "text-orange-400" : th.textMuted}`}>
-                              <Flame size={13} /> {t("streakDays", lang, { n: String(streak) })}
-                            </span>
-                            <span className={`text-xs ${th.textMuted}`}>{info.count} / {h.targetPerDay} {t("minutes", lang)}</span>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1 shrink-0">
-                          <button onClick={() => { setEditingHabit(h); setShowHabitModal(true); }}
-                            className={`p-2 rounded-xl ${th.cardHover} ${th.textMuted}`}><Pencil size={16} /></button>
-                          <button onClick={() => setConfirmDeleteHabit(h)}
-                            className={`p-2 rounded-xl ${th.cardHover} text-red-500/70`}><Trash2 size={16} /></button>
-                        </div>
-                      </div>
-
-                      <div className={`rounded-xl border p-3 ${th.card} ${timerFor === h.id && timerReached ? "border-green-500/60 animate-pulse" : ""}`}>
-                        {timerFor === h.id && timerReached && (
-                          <div className="flex items-center justify-center gap-2 mb-2 py-1">
-                            <span className={`font-bold text-base ${th.accent}`}>🎉 {t("timerDone", lang)}</span>
-                          </div>
-                        )}
-                        {timerFor === h.id && timerRunning && !timerReached && (
-                          <div className="flex items-center justify-center gap-2 mb-2">
-                            <span className={`font-mono text-lg font-bold tabular-nums ${th.accent}`}>
-                              {formatTimer(elapsedMs)}
-                            </span>
-                            <span className={`text-xs ${th.textMuted}`}>/ {h.targetPerDay} {t("minutes", lang)}</span>
-                          </div>
-                        )}
-                        {timerFor === h.id && !timerRunning && !timerReached && (
-                          <div className="flex items-center justify-center gap-2 mb-2">
-                            <span className={`font-mono text-lg font-bold tabular-nums ${th.textPrimary}`}>
-                              {formatTimer(elapsedMs)}
-                            </span>
-                            <span className={`text-xs ${th.textMuted}`}>/ {h.targetPerDay} {t("minutes", lang)}</span>
-                          </div>
-                        )}
-                        <div className="flex items-center gap-2">
-                          {timerReached ? (
-                            <button onClick={handleFinishTimer}
-                              className={`flex-1 py-2 rounded-xl text-sm font-bold border transition ${th.accent} animate-bounce`}>
-                              {t("finish", lang)}
-                            </button>
-                          ) : timerFor !== h.id ? (
-                            <button onClick={() => handleStartTimer(h.id)} disabled={!info.due}
-                              className={`flex-1 py-2 rounded-xl text-sm font-bold border transition ${cc} ${info.due ? "" : "opacity-40"}`}>
-                              ▶ {t("startTimer", lang)}
-                            </button>
-                          ) : timerRunning ? (
-                            <>
-                              <button onClick={handlePauseTimer}
-                                className={`flex-[2] py-2 rounded-xl text-sm font-bold border transition ${th.card} ${th.textSecondary}`}>
-                                ⏸ {t("pause", lang)}
-                              </button>
-                              <button onClick={() => handleFinishTimer()} disabled={!info.due}
-                                className={`flex-1 py-2 rounded-xl text-sm font-bold border transition ${th.accent} ${info.due ? "" : "opacity-40"}`}>
-                                {t("finish", lang)}
-                              </button>
-                            </>
-                          ) : (
-                            <>
-                              <button onClick={handleResumeTimer}
-                                className={`flex-1 py-2 rounded-xl text-sm font-bold border transition ${th.accent}`}>
-                                ▶ {t("resume", lang)}
-                              </button>
-                              <button onClick={() => handleFinishTimer()} disabled={!info.due}
-                                className={`flex-1 py-2 rounded-xl text-sm font-bold border transition ${th.card} ${info.due ? "" : "opacity-40"}`}>
-                                {t("finish", lang)}
-                              </button>
-                            </>
-                          )}
-                          {timerFor === h.id && (
-                            <button onClick={handleResetTimer} title="reset"
-                              className={`p-2 rounded-xl ${th.cardHover} ${th.textMuted}`}><X size={16} /></button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                  <>
-                    <div className="flex items-center gap-3">
-                      <button onClick={() => handleToggleHabit(h.id, today)} disabled={!info.due}
-                        className={`shrink-0 w-10 h-10 rounded-xl border flex items-center justify-center transition active:scale-90 ${cc} ${info.due ? "" : "opacity-40"}`}
-                        style={info.complete ? { background: "currentColor" } : undefined}>
-                        {info.complete ? (
-                          <Check size={20} className="text-slate-950" />
-                        ) : (
-                          <span className="text-lg">{h.emoji}</span>
-                        )}
-                      </button>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className={`text-sm font-semibold truncate ${th.textPrimary}`}>{t(h.name, lang)}</p>
-                          {h.frequency.kind === "weekly" && (
-                            <div className="flex gap-0.5">
-                              {[1, 2, 3, 4, 5, 6, 0].map((d) => (
-                                <span key={d} className={`w-1.5 h-1.5 rounded-full ${h.frequency.days.includes(d) ? cc + " bg-current" : "bg-black/15"}`} />
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-3 mt-0.5">
-                          <span className={`flex items-center gap-1 text-xs font-semibold ${streak > 0 ? "text-orange-400" : th.textMuted}`}>
-                            <Flame size={13} /> {t("streakDays", lang, { n: String(streak) })}
-                          </span>
-                          {h.targetPerDay > 1 && (
-                            <span className={`text-xs ${th.textMuted}`}>{info.count}/{h.targetPerDay}</span>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1 shrink-0">
-                        <button onClick={() => { setEditingHabit(h); setShowHabitModal(true); }}
-                          className={`p-2 rounded-xl ${th.cardHover} ${th.textMuted}`}><Pencil size={16} /></button>
-                        <button onClick={() => setConfirmDeleteHabit(h)}
-                          className={`p-2 rounded-xl ${th.cardHover} text-red-500/70`}><Trash2 size={16} /></button>
-                      </div>
-                    </div>
-                  </>
-                  )}
-                </motion.div>
-              );
-            })}
+            {renderActiveList()}
           </div>
         </section>
 
