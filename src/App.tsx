@@ -257,6 +257,21 @@ function renderWeekdayDots(h: Habit, cc: string) {
   );
 }
 
+/**
+ * Hazır paket habit'lerinin adını paket şablonundan çevirir. Eski kayıtlarda
+ * habit adı i18n anahtarı yerine literal ("set_...", "setMorning1" gibi)
+ * saklanmış olabilir — packId + emoji eşleşmesiyle doğru yerelleştirilmiş
+ * ad garanti edilir; eşleşme yoksa t() ile çevrilir.
+ */
+function habitDisplayName(h: Habit, lang: LangCode): string {
+  if (h.packId) {
+    const set = HABIT_SETS.find((s) => s.id === h.packId);
+    const item = set?.habits.find((it) => it.emoji === h.emoji);
+    if (item) return t(item.nameKey, lang);
+  }
+  return habitDisplayName(h, lang);
+}
+
 // ============================================================================
 // GENEL MODAL ÇERÇEVESİ
 // ============================================================================
@@ -555,7 +570,7 @@ function HabitModal({ existing, onSave, onClose, th, lang }: {
   onClose: () => void; th: typeof THEMES[ThemeKey]; lang: LangCode;
 }) {
   const [step, setStep] = useState(1);
-  const [name, setName] = useState(existing ? t(existing.name, lang) : "");
+  const [name, setName] = useState(existing ? habitDisplayName(existing, lang) : "");
   const [emoji, setEmoji] = useState(existing?.emoji || HABIT_EMOJIS[0]);
   const [color, setColor] = useState(existing?.color || "accent");
   const [freqKind, setFreqKind] = useState<"daily" | "weekly">(existing?.frequency.kind || "daily");
@@ -981,7 +996,7 @@ function ChallengeDetailModal({ challenge, habit, logs, today, onToggle, onCance
                 {isHabitComplete(habit, logs, today) && <Check size={18} className="text-slate-950" />}
               </span>
               <div className="flex-1 min-w-0 text-left">
-                <p className={`text-sm font-semibold truncate ${th.textPrimary}`}>{habit.emoji} {t(habit.name, lang)}</p>
+                <p className={`text-sm font-semibold truncate ${th.textPrimary}`}>{habit.emoji} {habitDisplayName(habit, lang)}</p>
                 <p className={`text-xs ${th.textMuted}`}>
                   {habitLogFor(habit, logs, today).count}/{habit.targetPerDay}
                 </p>
@@ -1104,7 +1119,7 @@ function CalendarModal({ habits, logs, onToggle, onClose, th, lang }: {
                   <span className={`w-7 h-7 rounded-lg flex items-center justify-center border ${colorClass(h, th)} ${done ? "bg-current" : ""}`}>
                     {done && <Check size={14} className="text-slate-950" />}
                   </span>
-                  <span className={`flex-1 text-left text-sm truncate ${th.textPrimary}`}>{h.emoji} {t(h.name, lang)}</span>
+                  <span className={`flex-1 text-left text-sm truncate ${th.textPrimary}`}>{h.emoji} {habitDisplayName(h, lang)}</span>
                   <span className={`text-xs ${th.textMuted}`}>
                     {due ? `${habitLogFor(h, logs, selected).count}/${h.targetPerDay}` : "·"}
                   </span>
@@ -1296,6 +1311,89 @@ function DetailStatsModal({ habits, logs, onClose, th, lang }: {
   const habitStreaks = useMemo(() => getHabitStreaks(habits, logs, today), [habits, logs, today]);
   const consistent = useMemo(() => getMostConsistent(habits, logs, 30, today, 5), [habits, logs, today]);
 
+  type StreakRow = (typeof habitStreaks)[number];
+  const streakGroups: {
+    standalone: StreakRow[];
+    packs: { id: string; template?: HabitSetTemplate; rows: StreakRow[] }[];
+  } = useMemo(() => {
+    const packs = new Map<string, StreakRow[]>();
+    const standalone: StreakRow[] = [];
+    for (const row of habitStreaks) {
+      if (row.habit.packId) {
+        const g = packs.get(row.habit.packId);
+        if (g) g.push(row);
+        else packs.set(row.habit.packId, [row]);
+      } else {
+        standalone.push(row);
+      }
+    }
+    return {
+      standalone,
+      packs: Array.from(packs.entries()).map(([id, rows]) => ({ id, template: HABIT_SETS.find((s) => s.id === id), rows })),
+    };
+  }, [habitStreaks]);
+
+  type ConsistentRow = (typeof consistent)[number];
+  const consistentGroups: {
+    standalone: { row: ConsistentRow; rank: number }[];
+    packs: { id: string; template?: HabitSetTemplate; rows: { row: ConsistentRow; rank: number }[] }[];
+  } = useMemo(() => {
+    const packs = new Map<string, { row: ConsistentRow; rank: number }[]>();
+    const standalone: { row: ConsistentRow; rank: number }[] = [];
+    consistent.forEach((row, i) => {
+      const item = { row, rank: i + 1 };
+      if (row.habit.packId) {
+        const g = packs.get(row.habit.packId);
+        if (g) g.push(item);
+        else packs.set(row.habit.packId, [item]);
+      } else {
+        standalone.push(item);
+      }
+    });
+    return {
+      standalone,
+      packs: Array.from(packs.entries()).map(([id, rows]) => ({ id, template: HABIT_SETS.find((s) => s.id === id), rows })),
+    };
+  }, [consistent]);
+
+  const StreakLine = ({ habit, current, best }: StreakRow) => {
+    const cc = colorClass(habit, th);
+    return (
+      <div className="flex items-center gap-3 rounded-xl px-2 py-2">
+        <span className={`shrink-0 w-8 h-8 rounded-lg border flex items-center justify-center ${cc}`}>
+          {habit.emoji}
+        </span>
+        <div className="flex-1 min-w-0">
+          <p className={`text-sm font-semibold truncate ${th.textPrimary}`}>{habitDisplayName(habit, lang)}</p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <span className={`text-[10px] rounded-full px-2 py-1 border ${th.card} ${th.accent3}`}>🔥 {t("dayStreak", lang, { n: String(current) })}</span>
+          <span className={`text-[10px] rounded-full px-2 py-1 border ${th.card} ${th.textMuted}`}>{best}⚡</span>
+        </div>
+      </div>
+    );
+  };
+
+  const ConsistentLine = ({ row, rank }: { row: ConsistentRow; rank: number }) => {
+    return (
+      <div className="flex items-center gap-3">
+        <span className={`w-5 text-sm font-bold text-center ${rank === 1 ? th.accent3 : th.textMuted}`}>#{rank}</span>
+        <span className={`shrink-0 w-8 h-8 rounded-lg border flex items-center justify-center ${colorClass(row.habit, th)}`}>
+          {row.habit.emoji}
+        </span>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between">
+            <p className={`text-sm font-semibold truncate ${th.textPrimary}`}>{habitDisplayName(row.habit, lang)}</p>
+            <span className={`text-xs font-bold ${th.accent}`}>%{row.rate}</span>
+          </div>
+          <div className="h-1.5 w-full rounded-full mt-1.5 overflow-hidden" style={{ backgroundColor: "rgba(0,0,0,0.2)" }}>
+            <div className="h-full rounded-full" style={{ backgroundColor: th.accent, width: `${row.rate}%`, opacity: 0.7 }} />
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const monthLabels = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
   // Son 30 günü 6 sütuna böl (her biri 5 gün) — okunur uzun dönem grafiği
   const buckets: { label: string; pct: number; done: number; due: number }[] = [];
@@ -1398,23 +1496,20 @@ function DetailStatsModal({ habits, logs, onClose, th, lang }: {
             {habitStreaks.length === 0 && (
               <p className={`text-xs text-center py-3 ${th.textMuted}`}>{t("noHabits", lang)}</p>
             )}
-            {habitStreaks.map(({ habit, current, best }) => {
-              const cc = colorClass(habit, th);
-              return (
-                <div key={habit.id} className="flex items-center gap-3 rounded-xl px-2 py-2">
-                  <span className={`shrink-0 w-8 h-8 rounded-lg border flex items-center justify-center ${cc}`}>
-                    {habit.emoji}
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-semibold truncate ${th.textPrimary}`}>{t(habit.name, lang)}</p>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className={`text-[10px] rounded-full px-2 py-1 border ${th.card} ${th.accent3}`}>🔥 {t("dayStreak", lang, { n: String(current) })}</span>
-                    <span className={`text-[10px] rounded-full px-2 py-1 border ${th.card} ${th.textMuted}`}>{best}⚡</span>
-                  </div>
-                </div>
-              );
-            })}
+            {streakGroups.standalone.map(({ habit, current, best }) => (
+              <StreakLine key={habit.id} habit={habit} current={current} best={best} />
+            ))}
+            {streakGroups.packs.map((pack) => (
+              <Fragment key={pack.id}>
+                <p className={`flex items-center gap-1.5 text-[10px] uppercase tracking-wide font-bold mt-1 ${th.textMuted}`}>
+                  <span className="text-xs">{pack.template?.emoji}</span>
+                  {t(pack.template?.nameKey ?? pack.id, lang)}
+                </p>
+                {pack.rows.map(({ habit, current, best }) => (
+                  <StreakLine key={habit.id} habit={habit} current={current} best={best} />
+                ))}
+              </Fragment>
+            ))}
           </div>
           <ShareRow target={perHabitRef} share={share} shareId={3} sharing={sharing} th={th} lang={lang} />
         </div>
@@ -1426,22 +1521,23 @@ function DetailStatsModal({ habits, logs, onClose, th, lang }: {
             {consistent.length === 0 && (
               <p className={`text-xs text-center py-3 ${th.textMuted}`}>{t("noHabits", lang)}</p>
             )}
-            {consistent.map((row, i) => (
-              <div key={row.habit.id} className="flex items-center gap-3">
-                <span className={`w-5 text-sm font-bold text-center ${i === 0 ? th.accent3 : th.textMuted}`}>#{i + 1}</span>
-                <span className={`shrink-0 w-8 h-8 rounded-lg border flex items-center justify-center ${colorClass(row.habit, th)}`}>
-                  {row.habit.emoji}
-                </span>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <p className={`text-sm font-semibold truncate ${th.textPrimary}`}>{t(row.habit.name, lang)}</p>
-                    <span className={`text-xs font-bold ${th.accent}`}>%{row.rate}</span>
-                  </div>
-                  <div className="h-1.5 w-full rounded-full mt-1.5 overflow-hidden" style={{ backgroundColor: "rgba(0,0,0,0.2)" }}>
-                    <div className="h-full rounded-full" style={{ backgroundColor: th.accent, width: `${row.rate}%`, opacity: 0.7 }} />
-                  </div>
-                </div>
-              </div>
+            {consistentGroups.standalone.map(({ row, rank }) => (
+              <Fragment key={row.habit.id}>
+                <ConsistentLine row={row} rank={rank} />
+              </Fragment>
+            ))}
+            {consistentGroups.packs.map((pack) => (
+              <Fragment key={pack.id}>
+                <p className={`flex items-center gap-1.5 text-[10px] uppercase tracking-wide font-bold ${th.textMuted}`}>
+                  <span className="text-xs">{pack.template?.emoji}</span>
+                  {t(pack.template?.nameKey ?? pack.id, lang)}
+                </p>
+                {pack.rows.map(({ row, rank }) => (
+                  <Fragment key={row.habit.id}>
+                    <ConsistentLine row={row} rank={rank} />
+                  </Fragment>
+                ))}
+              </Fragment>
             ))}
           </div>
           <ShareRow target={consistentRef} share={share} shareId={4} sharing={sharing} th={th} lang={lang} />
@@ -1681,7 +1777,7 @@ export default function App() {
               </span>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <p className={`text-sm font-semibold truncate ${th.textPrimary}`}>{t(h.name, lang)}</p>
+                  <p className={`text-sm font-semibold truncate ${th.textPrimary}`}>{habitDisplayName(h, lang)}</p>
                   {renderWeekdayDots(h, cc)}
                 </div>
                 <div className="flex items-center gap-3 mt-0.5">
@@ -1776,7 +1872,7 @@ export default function App() {
             </button>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <p className={`text-sm font-semibold truncate ${th.textPrimary}`}>{t(h.name, lang)}</p>
+                <p className={`text-sm font-semibold truncate ${th.textPrimary}`}>{habitDisplayName(h, lang)}</p>
                 {renderWeekdayDots(h, cc)}
               </div>
               <div className="flex items-center gap-3 mt-0.5">
@@ -1912,7 +2008,7 @@ export default function App() {
   const habitFor = (id: string) => habits.find((h) => h.id === id);
   const challengeHabitName = (c: Challenge) => {
     const h = habitFor(c.habitId);
-    return h ? `${h.emoji} ${t(h.name, lang)}` : (c.name.startsWith("set") ? t(c.name, lang) : c.name);
+    return h ? `${h.emoji} ${habitDisplayName(h, lang)}` : (c.name.startsWith("set") ? t(c.name, lang) : c.name);
   };
 
   // ---- AKSİYONLAR ----
