@@ -243,6 +243,23 @@ function colorClass(habit: Habit, th: typeof THEMES[ThemeKey]): string {
   }
 }
 
+/** Tema preview hex rengini "r, g, b" metnine çevirir (rgba() için). */
+function hexToRgb(hex: string): string {
+  const m = hex.replace("#", "");
+  const bigint = parseInt(m, 16);
+  return `${(bigint >> 16) & 255}, ${(bigint >> 8) & 255}, ${bigint & 255}`;
+}
+
+/** Rapor lejant ögesi: renk kutusu + etiket. */
+function LegendItem({ color, label }: { color: string; label: string }) {
+  return (
+    <span className="flex items-center gap-1.5">
+      <span className="w-3 h-3 rounded" style={{ background: color }} />
+      <span className="text-[10px] text-slate-400">{label}</span>
+    </span>
+  );
+}
+
 /** Haftalık habit'ler için gün noktaları (günler "weekly" dalında tanımlıdır). */
 function renderWeekdayDots(h: Habit, cc: string) {
   const freq = h.frequency;
@@ -1245,6 +1262,8 @@ function DetailStatsModal({ habits, logs, onClose, th, lang }: {
   onClose: () => void; th: typeof THEMES[ThemeKey]; lang: LangCode;
 }) {
   const summaryRef = useRef<HTMLDivElement>(null);
+  const monthReportRef = useRef<HTMLDivElement>(null);
+  const heatmapRef = useRef<HTMLDivElement>(null);
   const last30Ref = useRef<HTMLDivElement>(null);
   const perHabitRef = useRef<HTMLDivElement>(null);
   const consistentRef = useRef<HTMLDivElement>(null);
@@ -1268,7 +1287,7 @@ function DetailStatsModal({ habits, logs, onClose, th, lang }: {
     setShareError(null);
     try {
       a4.innerHTML = "";
-      for (const r of [summaryRef, last30Ref, perHabitRef, consistentRef]) {
+      for (const r of [summaryRef, monthReportRef, heatmapRef, last30Ref, perHabitRef, consistentRef]) {
         if (!r.current) continue;
         const clone = r.current.cloneNode(true) as HTMLElement;
         clone.querySelectorAll(".share-row").forEach((el) => el.remove());
@@ -1310,6 +1329,74 @@ function DetailStatsModal({ habits, logs, onClose, th, lang }: {
   const avg30 = useMemo(() => getAverageRate(habits, logs, 30, today), [habits, logs, today]);
   const habitStreaks = useMemo(() => getHabitStreaks(habits, logs, today), [habits, logs, today]);
   const consistent = useMemo(() => getMostConsistent(habits, logs, 30, today, 5), [habits, logs, today]);
+
+  // Aktif habit'ler (rapor grafikleri boşken gereksiz gösterilmesin)
+  const active = getActiveHabits({ habits, logs, challenges: [] });
+  // Aylık takvim bloğu: içinde bulunulan ayın statik özeti
+  const calNow = new Date();
+  const calYear = calNow.getFullYear();
+  const calMonth = calNow.getMonth() + 1;
+  const monthCells = useMemo(
+    () => getMonthCells(calYear, calMonth, habits, logs, today),
+    [habits, logs, today]
+  );
+  const intlLocale = { tr: "tr-TR", en: "en-US", de: "de-DE", ar: "ar-SA", ur: "ur-PK" }[lang];
+  const monthLabel = new Intl.DateTimeFormat(intlLocale, { month: "long", year: "numeric" }).format(new Date(calYear, calMonth - 1, 1));
+  const weekKeysC = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
+  const monthA = hexToRgb(th.preview[1]);
+  const amberA = "245, 158, 11";
+  const missedA = "148, 163, 184"; // slate-400 tonu
+
+  // Son 12 hafta katkı haritası (Pazartesi başlangıçlı, sütun = hafta)
+  const heatmap = (() => {
+    const activeH = habits.filter((h) => !h.archived);
+    const cols: { label: string; rows: { date: string; done: number; due: number; future: boolean }[] }[] = [];
+    let lastMonth = -1;
+    for (let w = 11; w >= 0; w--) {
+      const monday = addDays(today, -w * 7);
+      const mm = parseInt(monday.slice(5, 7), 10);
+      const label = mm !== lastMonth
+        ? new Intl.DateTimeFormat(intlLocale, { month: "short" }).format(new Date(monday + "T00:00:00"))
+        : "";
+      lastMonth = mm;
+      const rows: { date: string; done: number; due: number; future: boolean }[] = [];
+      for (let r = 0; r < 7; r++) {
+        const date = addDays(monday, r);
+        const future = date > today;
+        const dueH = activeH.filter((h) => isHabitDue(h, date));
+        const due = dueH.length;
+        const done = future ? 0 : dueH.filter((h) => isHabitComplete(h, logs, date)).length;
+        rows.push({ date, done, due, future });
+      }
+      cols.push({ label, rows });
+    }
+    return cols;
+  })();
+  const heatTotals = heatmap.reduce<{ done: number; total: number }>(
+    (acc, c) => {
+      for (const r of c.rows) {
+        if (r.due > 0 && !r.future) {
+          acc.total++;
+          if (r.done === r.due) acc.done++;
+        }
+      }
+      return acc;
+    },
+    { done: 0, total: 0 }
+  );
+  const heatA = hexToRgb(th.preview[1]);
+  const heatBg = (day: { done: number; due: number; future: boolean }): string | undefined => {
+    if (day.future || day.due === 0) return undefined;
+    const r = day.done / day.due;
+    const a = r <= 0 ? 0.08 : r < 0.5 ? 0.35 : r < 1 ? 0.7 : 1;
+    return `rgba(${heatA}, ${a})`;
+  };
+  const monthCellBg = (cell: { completed: number; due: number; inMonth: boolean; date: string }): string | undefined => {
+    if (!cell.inMonth || cell.due === 0 || cell.date > today) return undefined;
+    if (cell.completed >= cell.due) return `rgba(${monthA}, 1)`;
+    if (cell.completed > 0) return `rgba(${amberA}, 0.85)`;
+    return `rgba(${missedA}, 0.22)`;
+  };
 
   type StreakRow = (typeof habitStreaks)[number];
   const streakGroups: {
@@ -1461,8 +1548,90 @@ function DetailStatsModal({ habits, logs, onClose, th, lang }: {
               <span className={`text-[10px] text-center leading-tight ${th.textMuted}`}>{t("avg30", lang)}</span>
             </div>
           </div>
+          {maxStreak > 0 ? (
+            <div className="flex items-center justify-center gap-2 rounded-2xl border px-3 py-2.5 text-xs font-semibold"
+              style={{ background: th.bg, color: "inherit" }}>
+              <Flame size={14} className={th.accent} />
+              <span className={th.accent}>{t("motivateKeep", lang, { n: String(maxStreak) })}</span>
+            </div>
+          ) : (
+            <div className="flex items-center justify-center gap-2 rounded-2xl border px-3 py-2.5 text-xs font-semibold"
+              style={{ background: th.bg, color: "inherit" }}>
+              <Flame size={14} className={th.textMuted} />
+              <span className={th.textSecondary}>{t("motivateStart", lang)}</span>
+            </div>
+          )}
           <ShareRow target={summaryRef} share={share} shareId={1} sharing={sharing} th={th} lang={lang} />
         </div>
+
+        {/* Aylık takvim özeti */}
+        {active.length > 0 && (
+          <div ref={monthReportRef} className="space-y-1">
+            <p className={`text-xs uppercase tracking-wide ${th.textMuted}`}>{t("reportMonthTitle", lang)}</p>
+            <div className={`rounded-2xl border p-4 ${th.card}`} style={{ background: th.bg }}>
+              <p className={`text-center text-sm font-semibold mb-2 ${th.textPrimary}`}>{monthLabel}</p>
+              <div className="grid grid-cols-7 gap-1 text-center mb-1">
+                {weekKeysC.map((k) => (
+                  <span key={k} className={`text-[9px] font-semibold uppercase ${th.textMuted}`}>{t(k, lang)}</span>
+                ))}
+              </div>
+              <div className="grid grid-cols-7 gap-1">
+                {monthCells.map((cell, i) => (
+                  <div key={i}
+                    className={`relative h-9 rounded-lg border flex items-center justify-center text-[11px] font-semibold transition ${cell.inMonth ? th.card : "opacity-30 " + th.card} ${cell.isToday ? "ring-1 ring-current " + th.accent : ""}`}
+                    style={{ background: monthCellBg(cell) }}>
+                    <span className={cell.completed >= cell.due && cell.due > 0 ? "text-slate-950" : cell.completed > 0 ? "text-slate-950" : `${th.textPrimary}`}>
+                      {Number(cell.date.slice(8, 10))}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <div className="flex items-center justify-center gap-4 mt-3">
+                <LegendItem color={`rgba(${monthA}, 1)`} label={t("reportDone", lang)} />
+                <LegendItem color={`rgba(${amberA}, 0.85)`} label={t("reportPartial", lang)} />
+                <LegendItem color={`rgba(${missedA}, 0.22)`} label={t("reportMissed", lang)} />
+              </div>
+            </div>
+            <ShareRow target={monthReportRef} share={share} shareId={5} sharing={sharing} th={th} lang={lang} />
+          </div>
+        )}
+
+        {/* Son 12 hafta katkı haritası */}
+        {active.length > 0 && (
+          <div ref={heatmapRef} className="space-y-1">
+            <p className={`text-xs uppercase tracking-wide ${th.textMuted}`}>{t("reportHeatmapTitle", lang)}</p>
+            <div className={`rounded-2xl border p-4 ${th.card}`} style={{ background: th.bg }}>
+              <div className="grid grid-cols-12 gap-1 mb-1">
+                {heatmap.map((c, i) => (
+                  <span key={i} className={`text-[9px] text-center truncate ${th.textMuted}`}>{c.label}</span>
+                ))}
+              </div>
+              <div className="grid grid-cols-12 gap-1">
+                {heatmap.map((c, i) => (
+                  <div key={i} className="grid grid-rows-7 gap-1">
+                    {c.rows.map((day, r) => (
+                      <div key={r} className="h-3.5 rounded-[3px]"
+                        style={{ background: heatBg(day) }} />
+                    ))}
+                  </div>
+                ))}
+              </div>
+              <div className="flex items-center justify-between gap-2 mt-3">
+                <span className={`text-[10px] ${th.textMuted}`}>
+                  {t("reportHeatmapSummary", lang, { done: String(heatTotals.done), total: String(heatTotals.total) })}
+                </span>
+                <span className="flex items-center gap-1.5 text-[10px]">
+                  <span className={th.textMuted}>{t("reportHeatmapLess", lang)}</span>
+                  {[0.08, 0.35, 0.7, 1].map((a) => (
+                    <span key={a} className="w-3 h-3 rounded-[3px]" style={{ background: `rgba(${heatA}, ${a})` }} />
+                  ))}
+                  <span className={th.textMuted}>{t("reportHeatmapMore", lang)}</span>
+                </span>
+              </div>
+            </div>
+            <ShareRow target={heatmapRef} share={share} shareId={6} sharing={sharing} th={th} lang={lang} />
+          </div>
+        )}
 
         {/* Son 30 gün grafiği (6 × 5 gün dilimi) */}
         <div ref={last30Ref} className="space-y-1">
