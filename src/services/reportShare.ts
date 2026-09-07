@@ -41,18 +41,19 @@ const SHARE_ROW_CLASS = "share-row";
  *   (tema sınıflarından gelen geniş koyu/gri alanlar mürekkep israfıdır).
  * - Metinler koyulaştırılır (beyaz zemin üzerinde okunur).
  * - Kenarlıklı hücrelere belirgin gri çizgi verilir (tablo görünümü).
- * - İnline stili olan renkli öğeler (grafik barları, ilerleme şeritleri)
- *   korunur — grafik desteği ve renkli ikon/zenginlik kaybolmaz.
+ * - İnline stili olan GERÇEK renkler korunur: grafik barları, ilerleme
+ *   şeritleri, takvim/ısı haritası dolguları (rgba) ve SVG grafikleri.
+ *   Sadece geçersiz tema sınıfı kalıntıları (ör. "bg-[#020617]") temizlenir.
  */
 function applyPrintStyle(target: HTMLElement, clonedDoc: Document): void {
+  const keepColor = (s: string) =>
+    s.includes("gradient") || /^(rgb|hsl)/i.test(s.trim()) || /^#[0-9a-f]{6}/i.test(s.trim()) || s.trim() === "transparent";
   const all = target.querySelectorAll<HTMLElement>("*");
   all.forEach((el) => {
     const bg = el.style.background;
-    if (bg) {
-      // İnline düz renk (blok/kart arka planı) → beyaza; gradyan (bar) → korunur.
-      if (!bg.includes("gradient")) el.style.background = "transparent";
-    } else if (!el.style.backgroundColor || el.style.backgroundColor.startsWith("rgba")) {
-      // Class'tan gelen arka planlar veya ilerleme şeridi izi → beyaza.
+    if (bg && bg.trim() && !keepColor(bg)) {
+      el.style.background = "transparent";
+    } else if (el.style.backgroundColor && !keepColor(el.style.backgroundColor)) {
       el.style.backgroundColor = "transparent";
     }
     el.style.color = "#111827";
@@ -68,7 +69,7 @@ async function captureCanvas(element: HTMLElement, opts: ReportBlockOptions): Pr
   try {
     return await html2canvas(element, {
       backgroundColor: "#ffffff",
-      scale: 2,
+      scale: 3,
       useCORS: true,
       logging: false,
       ignoreElements: (el) => el.classList?.contains(SHARE_ROW_CLASS) ?? false,

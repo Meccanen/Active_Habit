@@ -228,9 +228,12 @@ const APP_VERSION = "0.1.0";
 /**
  * Reklam özellikleri:
  * - CUSTOM_CHALLENGE_REWARD: özel challenge oluşturmak için ödüllü reklam izletecek.
+ * - ADVANCED_CHARTS_REWARD: detaylı grafik raporunu kilitleyip ödüllü reklamla açacak
+ *   (kullanıcıları grafik görmek için reklam izlemeye motive eder).
  * - SHOW_BANNER_ADS: ana ekranda altta banner reklam gösterecek.
  */
 const CUSTOM_CHALLENGE_REWARD = false;
+const ADVANCED_CHARTS_REWARD = true;
 const SHOW_BANNER_ADS = true;
 
 /** Habit rengi → tema sınıfı çevirici (accent ailesi temaya bağımlı). */
@@ -250,12 +253,12 @@ function hexToRgb(hex: string): string {
   return `${(bigint >> 16) & 255}, ${(bigint >> 8) & 255}, ${bigint & 255}`;
 }
 
-/** Rapor lejant ögesi: renk kutusu + etiket. */
-function LegendItem({ color, label }: { color: string; label: string }) {
+/** Rapor lejant ögesi: renk kutusu + etiket (+ isteğe bağlı değer). */
+function LegendItem({ color, label, value }: { color: string; label: string; value?: string }) {
   return (
     <span className="flex items-center gap-1.5">
       <span className="w-3 h-3 rounded" style={{ background: color }} />
-      <span className="text-[10px] text-slate-400">{label}</span>
+      <span className="text-[10px] text-slate-400">{label}{value ? ` · ${value}` : ""}</span>
     </span>
   );
 }
@@ -1264,6 +1267,8 @@ function DetailStatsModal({ habits, logs, onClose, th, lang }: {
   const summaryRef = useRef<HTMLDivElement>(null);
   const monthReportRef = useRef<HTMLDivElement>(null);
   const heatmapRef = useRef<HTMLDivElement>(null);
+  const donutRef = useRef<HTMLDivElement>(null);
+  const lineRef = useRef<HTMLDivElement>(null);
   const last30Ref = useRef<HTMLDivElement>(null);
   const perHabitRef = useRef<HTMLDivElement>(null);
   const consistentRef = useRef<HTMLDivElement>(null);
@@ -1287,7 +1292,7 @@ function DetailStatsModal({ habits, logs, onClose, th, lang }: {
     setShareError(null);
     try {
       a4.innerHTML = "";
-      for (const r of [summaryRef, monthReportRef, heatmapRef, last30Ref, perHabitRef, consistentRef]) {
+      for (const r of [summaryRef, monthReportRef, heatmapRef, donutRef, lineRef, last30Ref, perHabitRef, consistentRef]) {
         if (!r.current) continue;
         const clone = r.current.cloneNode(true) as HTMLElement;
         clone.querySelectorAll(".share-row").forEach((el) => el.remove());
@@ -1397,6 +1402,9 @@ function DetailStatsModal({ habits, logs, onClose, th, lang }: {
     if (cell.completed > 0) return `rgba(${amberA}, 0.85)`;
     return `rgba(${missedA}, 0.22)`;
   };
+  // Takvim hücrelerini 7'li hafta satırlarına böl (flex ile html2canvas uyumlu).
+  const monthWeeks: { date: string; completed: number; due: number; inMonth: boolean; isToday: boolean }[][] = [];
+  for (let i = 0; i < monthCells.length; i += 7) monthWeeks.push(monthCells.slice(i, i + 7));
 
   type StreakRow = (typeof habitStreaks)[number];
   const streakGroups: {
@@ -1502,6 +1510,74 @@ function DetailStatsModal({ habits, logs, onClose, th, lang }: {
   }
   const maxBucket = Math.max(1, ...buckets.map((b) => b.pct));
 
+  // ---- Pasta (donut) grafiği: son 30 günün durum dağılımı ----
+  const past30 = last30.filter((d) => d.date <= today);
+  const sliceCounts = past30.reduce(
+    (acc, d) => {
+      if (d.due === 0) acc.rest++;
+      else if (d.done >= d.due) acc.done++;
+      else if (d.done > 0) acc.partial++;
+      else acc.missed++;
+      return acc;
+    },
+    { done: 0, partial: 0, missed: 0, rest: 0 }
+  );
+  const donutTotal = sliceCounts.done + sliceCounts.partial + sliceCounts.missed + sliceCounts.rest;
+  const DONUT_R = 52;
+  const DONUT_C = 2 * Math.PI * DONUT_R;
+  const donutSegs: { key: string; v: number; color: string }[] = [
+    { key: "done", v: sliceCounts.done, color: "#22c55e" },
+    { key: "partial", v: sliceCounts.partial, color: "#f59e0b" },
+    { key: "missed", v: sliceCounts.missed, color: "#94a3b8" },
+    { key: "rest", v: sliceCounts.rest, color: "#e2e8f0" },
+  ];
+  let donutOffset = 0;
+  const donutArcs = donutSegs.map((s) => {
+    const frac = donutTotal ? s.v / donutTotal : 0;
+    const dash = frac > 0 ? Math.max(frac * DONUT_C - 2.5, 0.1) : 0;
+    const el =
+      frac > 0 ? (
+        <circle
+          key={s.key}
+          cx="64"
+          cy="64"
+          r={DONUT_R}
+          fill="none"
+          stroke={s.color}
+          strokeWidth="17"
+          strokeDasharray={`${dash} ${DONUT_C}`}
+          strokeDashoffset={-donutOffset}
+          transform="rotate(-90 64 64)"
+        />
+      ) : null;
+    donutOffset += frac * DONUT_C;
+    return el;
+  });
+
+  // ---- XY (çizgi) grafiği: son 30 gün günlük tamamlama yüzdesi ----
+  let carried = 0;
+  const lineVals = past30.map((d) => {
+    if (d.due === 0) return carried;
+    const v = Math.round((d.done / d.due) * 100);
+    carried = v;
+    return v;
+  });
+  const L_W = 260;
+  const L_H = 104;
+  const L_PX = 6;
+  const L_PT = 14;
+  const L_PB = 8;
+  const lx = (i: number) => (lineVals.length === 1 ? L_PX : L_PX + (i * (L_W - L_PX * 2)) / (lineVals.length - 1));
+  const ly = (v: number) => L_PT + ((100 - v) / 100) * (L_H - L_PT - L_PB);
+  const linePts = lineVals.map((v, i) => `${lx(i).toFixed(1)},${ly(v).toFixed(1)}`).join(" ");
+  const areaPts = lineVals.length
+    ? `${lx(0).toFixed(1)},${(L_H - L_PB).toFixed(1)} ${linePts} ${lx(lineVals.length - 1).toFixed(1)},${(L_H - L_PB).toFixed(1)}`
+    : "";
+  const lineXL = [0, Math.floor((lineVals.length - 1) * 0.25), Math.floor((lineVals.length - 1) * 0.5), Math.floor((lineVals.length - 1) * 0.75), lineVals.length - 1]
+    .map((i) => past30[i]?.date.slice(8, 10) ?? "");
+  const hasTrend = lineVals.length > 0 && past30.some((d) => d.due > 0);
+  const hasBreakdown = past30.some((d) => d.due > 0);
+
   return (
     <Modal onClose={onClose} th={th}>
       <ModalHeader title={t("advancedStats", lang)} onClose={onClose} th={th} />
@@ -1531,19 +1607,19 @@ function DetailStatsModal({ habits, logs, onClose, th, lang }: {
         {/* Üst özet: akım zincir + ortalamalar */}
         <div ref={summaryRef} className="space-y-1">
           <p className={`text-xs uppercase tracking-wide ${th.textMuted}`}>{t("summaryTitle", lang)}</p>
-          <div className="grid grid-cols-3 gap-2.5" style={{ background: th.bg }}>
-            <div className={`flex flex-col items-center gap-1 rounded-2xl border p-3.5 ${th.card}`}>
+          <div className="flex" style={{ background: th.bg }}>
+            <div className={`flex flex-col items-center gap-1 flex-1 rounded-2xl border p-3.5 ${th.card}`} style={{ marginRight: 10 }}>
               <span className="flex items-center justify-center w-7 h-7 rounded-full opacity-20" style={{ background: th.accent3 }}>
                 <Flame size={14} className="text-black" />
               </span>
               <span className={`text-xl font-bold ${th.accent3}`}>{maxStreak}</span>
               <span className={`text-[10px] text-center leading-tight ${th.textMuted}`}>{t("yourStreak", lang)}</span>
             </div>
-            <div className={`flex flex-col items-center gap-1 rounded-2xl border p-3.5 ${th.card}`}>
+            <div className={`flex flex-col items-center gap-1 flex-1 rounded-2xl border p-3.5 ${th.card}`} style={{ marginRight: 10 }}>
               <span className={`text-xl font-bold ${th.accent}`}>%{avg7}</span>
               <span className={`text-[10px] text-center leading-tight ${th.textMuted}`}>{t("avg7", lang)}</span>
             </div>
-            <div className={`flex flex-col items-center gap-1 rounded-2xl border p-3.5 ${th.card}`}>
+            <div className={`flex flex-col items-center gap-1 flex-1 rounded-2xl border p-3.5 ${th.card}`}>
               <span className={`text-xl font-bold ${th.accent2}`}>%{avg30}</span>
               <span className={`text-[10px] text-center leading-tight ${th.textMuted}`}>{t("avg30", lang)}</span>
             </div>
@@ -1570,19 +1646,23 @@ function DetailStatsModal({ habits, logs, onClose, th, lang }: {
             <p className={`text-xs uppercase tracking-wide ${th.textMuted}`}>{t("reportMonthTitle", lang)}</p>
             <div className={`rounded-2xl border p-4 ${th.card}`} style={{ background: th.bg }}>
               <p className={`text-center text-sm font-semibold mb-2 ${th.textPrimary}`}>{monthLabel}</p>
-              <div className="grid grid-cols-7 gap-1 text-center mb-1">
+              <div className="flex text-center mb-1">
                 {weekKeysC.map((k) => (
-                  <span key={k} className={`text-[9px] font-semibold uppercase ${th.textMuted}`}>{t(k, lang)}</span>
+                  <span key={k} className={`flex-1 text-[9px] font-semibold uppercase ${th.textMuted}`}>{t(k, lang)}</span>
                 ))}
               </div>
-              <div className="grid grid-cols-7 gap-1">
-                {monthCells.map((cell, i) => (
-                  <div key={i}
-                    className={`relative h-9 rounded-lg border flex items-center justify-center text-[11px] font-semibold transition ${cell.inMonth ? th.card : "opacity-30 " + th.card} ${cell.isToday ? "ring-1 ring-current " + th.accent : ""}`}
-                    style={{ background: monthCellBg(cell) }}>
-                    <span className={cell.completed >= cell.due && cell.due > 0 ? "text-slate-950" : cell.completed > 0 ? "text-slate-950" : `${th.textPrimary}`}>
-                      {Number(cell.date.slice(8, 10))}
-                    </span>
+              <div className="flex flex-col">
+                {monthWeeks.map((week, wi) => (
+                  <div key={wi} className="flex" style={wi ? { marginTop: 4 } : undefined}>
+                    {week.map((cell, ci) => (
+                      <div key={ci}
+                        className={`relative h-9 flex-1 rounded-lg border flex items-center justify-center text-[11px] font-semibold transition ${cell.inMonth ? th.card : "opacity-30 " + th.card} ${cell.isToday ? "ring-1 ring-current " + th.accent : ""}`}
+                        style={{ ...(ci < week.length - 1 ? { marginRight: 4 } : {}), ...(monthCellBg(cell) ? { background: monthCellBg(cell) } : {}) }}>
+                        <span className={cell.completed >= cell.due && cell.due > 0 ? "text-slate-950" : cell.completed > 0 ? "text-slate-950" : `${th.textPrimary}`}>
+                          {Number(cell.date.slice(8, 10))}
+                        </span>
+                      </div>
+                    ))}
                   </div>
                 ))}
               </div>
@@ -1601,17 +1681,17 @@ function DetailStatsModal({ habits, logs, onClose, th, lang }: {
           <div ref={heatmapRef} className="space-y-1">
             <p className={`text-xs uppercase tracking-wide ${th.textMuted}`}>{t("reportHeatmapTitle", lang)}</p>
             <div className={`rounded-2xl border p-4 ${th.card}`} style={{ background: th.bg }}>
-              <div className="grid grid-cols-12 gap-1 mb-1">
+              <div className="flex mb-1">
                 {heatmap.map((c, i) => (
-                  <span key={i} className={`text-[9px] text-center truncate ${th.textMuted}`}>{c.label}</span>
+                  <span key={i} className={`flex-1 text-[9px] text-center truncate ${th.textMuted}`}>{c.label}</span>
                 ))}
               </div>
-              <div className="grid grid-cols-12 gap-1">
+              <div className="flex">
                 {heatmap.map((c, i) => (
-                  <div key={i} className="grid grid-rows-7 gap-1">
+                  <div key={i} className="flex-1 flex flex-col" style={i < heatmap.length - 1 ? { marginRight: 4 } : undefined}>
                     {c.rows.map((day, r) => (
                       <div key={r} className="h-3.5 rounded-[3px]"
-                        style={{ background: heatBg(day) }} />
+                        style={{ ...(r ? { marginTop: 4 } : {}), ...(heatBg(day) ? { background: heatBg(day) } : {}) }} />
                     ))}
                   </div>
                 ))}
@@ -1630,6 +1710,56 @@ function DetailStatsModal({ habits, logs, onClose, th, lang }: {
               </div>
             </div>
             <ShareRow target={heatmapRef} share={share} shareId={6} sharing={sharing} th={th} lang={lang} />
+          </div>
+        )}
+
+        {/* Pasta (donut) grafiği: son 30 günün durum dağılımı */}
+        {hasBreakdown && (
+          <div ref={donutRef} className="space-y-1">
+            <p className={`text-xs uppercase tracking-wide ${th.textMuted}`}>{t("reportPieTitle", lang)}</p>
+            <div className={`rounded-2xl border p-4 ${th.card}`} style={{ background: th.bg }}>
+              <div className="flex items-center justify-center gap-6">
+                <div className="relative w-36 h-36 shrink-0">
+                  <svg viewBox="0 0 128 128" className="w-full h-full">
+                    <circle cx="64" cy="64" r={DONUT_R} fill="none" stroke="#e2e8f0" strokeWidth="17" />
+                    {donutArcs}
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                    <span className="text-2xl font-extrabold" style={{ color: "#16a34a" }}>{sliceCounts.done}</span>
+                    <span className="text-[9px] uppercase tracking-wide text-slate-500">{t("reportDone", lang)}</span>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <LegendItem color="#22c55e" label={t("reportDone", lang)} value={String(sliceCounts.done)} />
+                  <LegendItem color="#f59e0b" label={t("reportPartial", lang)} value={String(sliceCounts.partial)} />
+                  <LegendItem color="#94a3b8" label={t("reportMissed", lang)} value={String(sliceCounts.missed)} />
+                  <LegendItem color="#e2e8f0" label={t("reportRest", lang)} value={String(sliceCounts.rest)} />
+                </div>
+              </div>
+            </div>
+            <ShareRow target={donutRef} share={share} shareId={7} sharing={sharing} th={th} lang={lang} />
+          </div>
+        )}
+
+        {/* XY (çizgi) grafiği: son 30 gün günlük tamamlama yüzdesi */}
+        {hasTrend && (
+          <div ref={lineRef} className="space-y-1">
+            <p className={`text-xs uppercase tracking-wide ${th.textMuted}`}>{t("reportTrendTitle", lang)}</p>
+            <div className={`rounded-2xl border p-4 ${th.card}`} style={{ background: th.bg }}>
+              <svg viewBox={`0 0 ${L_W} ${L_H}`} className="w-full h-24">
+                {[25, 50, 75].map((y) => (
+                  <line key={y} x1={L_PX} y1={y} x2={L_W - L_PX} y2={y} stroke="#e5e7eb" strokeWidth="1" strokeDasharray="3 4" />
+                ))}
+                <polyline points={areaPts} fill="#22c55e" opacity="0.16" stroke="none" />
+                <polyline points={linePts} fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+              </svg>
+              <div className="flex justify-between mt-1 px-0.5">
+                {lineXL.map((l, i) => (
+                  <span key={i} className="text-[9px] tabular-nums text-slate-400">{l}</span>
+                ))}
+              </div>
+            </div>
+            <ShareRow target={lineRef} share={share} shareId={8} sharing={sharing} th={th} lang={lang} />
           </div>
         )}
 
@@ -2111,6 +2241,7 @@ export default function App() {
 
   // Ödüllü reklamla kilit: oturum başına 1 kere. Reklam kapalıyken herkese açık.
   const [customUnlocked, setCustomUnlocked] = useState(isRewardedUnlockedThisSession());
+  const [chartsUnlocked, setChartsUnlocked] = useState(isRewardedUnlockedThisSession());
 
   const notify = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 3200); };
 
@@ -2226,6 +2357,16 @@ export default function App() {
       setCustomUnlocked(true);
       setShowChallengePicker(false);
       setShowCustomModal(true);
+    }
+  };
+
+  // Detaylı grafik raporu ödüllü reklamla açılır (grafik merakı → reklam izleme).
+  const handleOpenDetailStats = async () => {
+    if (!ADVANCED_CHARTS_REWARD || chartsUnlocked) { setShowDetailStats(true); return; }
+    const granted = await unlockWithRewardedInterstitial();
+    if (granted) {
+      setChartsUnlocked(true);
+      setShowDetailStats(true);
     }
   };
 
@@ -2402,12 +2543,18 @@ export default function App() {
           </div>
         </section>
 
-        {/* Seri özet kartı — merak uyandıran özet; detaylar için dokun → (sonra ödüllü reklam) detaylı grafikler */}
-        <button onClick={() => setShowDetailStats(true)}
+        {/* Seri özet kartı — merak uyandıran özet; detaylar için dokun → (ödüllü reklam) detaylı grafikler */}
+        <button onClick={handleOpenDetailStats}
           className={`w-full rounded-3xl border p-5 text-left transition-all active:scale-[0.98] ${th.card}`}>
           <div className="flex items-center justify-between mb-3">
             <span className={`text-xs uppercase tracking-wide ${th.textMuted}`}>{t("yourStreak", lang)}</span>
-            <span className={`text-[10px] font-semibold ${th.accent2}`}>{t("tapForDetails", lang)}</span>
+            {ADVANCED_CHARTS_REWARD && !chartsUnlocked ? (
+              <span className="flex items-center gap-1.5 text-[10px] font-semibold text-amber-500">
+                <Lock size={11} /> {t("chartsLocked", lang)}
+              </span>
+            ) : (
+              <span className={`text-[10px] font-semibold ${th.accent2}`}>{t("tapForDetails", lang)}</span>
+            )}
           </div>
           <div className="flex items-center gap-4">
             <div className={`shrink-0 w-16 h-16 rounded-2xl border flex items-center justify-center ${th.accent3} bg-current/20`}>
