@@ -1906,14 +1906,13 @@ export default function App() {
         ))}
         {habitGroups.packs.map((pack) => {
           const isOpen = !!expandedPacks[pack.id];
-          const nameKey = pack.template?.nameKey ?? pack.id;
           const done = pack.habits.filter((x) => habitLogFor(x, logs, today).complete).length;
           return (
             <div key={pack.id}>
               <button onClick={() => togglePack(pack.id)}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl border transition ${th.card}`}>
-                <span className="text-lg">{pack.template?.emoji ?? "📦"}</span>
-                <span className={`flex-1 text-left text-sm font-bold truncate ${th.textPrimary}`}>{t(nameKey, lang)}</span>
+                <span className="text-lg">{pack.emoji}</span>
+                <span className={`flex-1 text-left text-sm font-bold truncate ${th.textPrimary}`}>{t(pack.nameKey ?? pack.id, lang)}</span>
                 <span className={`text-xs font-semibold ${done === pack.habits.length ? th.accent3 : th.textMuted}`}>
                   {done}/{pack.habits.length}
                 </span>
