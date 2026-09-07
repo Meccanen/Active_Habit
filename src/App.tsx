@@ -1330,6 +1330,15 @@ function DetailStatsModal({ habits, logs, onClose, th, lang }: {
   const today = todayStr();
   const maxStreak = useMemo(() => getMaxCurrentStreak(habits, logs, today), [habits, logs, today]);
   const last30 = useMemo(() => getLongRangeDays(habits, logs, 30, today), [habits, logs, today]);
+
+  // Baskı/çıktı dostu rapor stili: tema koyuluğu yerine beyaz kart + koyu metin.
+  const rTitle = "text-slate-500";
+  const rText = "text-slate-900";
+  const rMuted = "text-slate-500";
+  const rCard = "bg-white border-slate-200";
+  const rBg = "#ffffff";
+  const accHex = th.preview[1];
+  const acc3Hex = th.preview[2];
   const avg7 = useMemo(() => getAverageRate(habits, logs, 7, today), [habits, logs, today]);
   const avg30 = useMemo(() => getAverageRate(habits, logs, 30, today), [habits, logs, today]);
   const habitStreaks = useMemo(() => getHabitStreaks(habits, logs, today), [habits, logs, today]);
@@ -1459,11 +1468,11 @@ function DetailStatsModal({ habits, logs, onClose, th, lang }: {
           {habit.emoji}
         </span>
         <div className="flex-1 min-w-0">
-          <p className={`text-sm font-semibold truncate ${th.textPrimary}`}>{habitDisplayName(habit, lang)}</p>
+          <p className={`text-sm font-semibold truncate ${rText}`}>{habitDisplayName(habit, lang)}</p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <span className={`text-[10px] rounded-full px-2 py-1 border ${th.card} ${th.accent3}`}>🔥 {t("dayStreak", lang, { n: String(current) })}</span>
-          <span className={`text-[10px] rounded-full px-2 py-1 border ${th.card} ${th.textMuted}`}>{best}⚡</span>
+          <span className={`text-[10px] rounded-full px-2 py-1 border bg-white ${th.accent3}`}>🔥 {t("dayStreak", lang, { n: String(current) })}</span>
+          <span className={`text-[10px] rounded-full px-2 py-1 border bg-white ${rMuted}`}>{best}⚡</span>
         </div>
       </div>
     );
@@ -1472,17 +1481,17 @@ function DetailStatsModal({ habits, logs, onClose, th, lang }: {
   const ConsistentLine = ({ row, rank }: { row: ConsistentRow; rank: number }) => {
     return (
       <div className="flex items-center gap-3">
-        <span className={`w-5 text-sm font-bold text-center ${rank === 1 ? th.accent3 : th.textMuted}`}>#{rank}</span>
+        <span className={`w-5 text-sm font-bold text-center ${rank === 1 ? th.accent3 : rMuted}`}>#{rank}</span>
         <span className={`shrink-0 w-8 h-8 rounded-lg border flex items-center justify-center ${colorClass(row.habit, th)}`}>
           {row.habit.emoji}
         </span>
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between">
-            <p className={`text-sm font-semibold truncate ${th.textPrimary}`}>{habitDisplayName(row.habit, lang)}</p>
+            <p className={`text-sm font-semibold truncate ${rText}`}>{habitDisplayName(row.habit, lang)}</p>
             <span className={`text-xs font-bold ${th.accent}`}>%{row.rate}</span>
           </div>
           <div className="h-1.5 w-full rounded-full mt-1.5 overflow-hidden" style={{ backgroundColor: "rgba(0,0,0,0.2)" }}>
-            <div className="h-full rounded-full" style={{ backgroundColor: th.accent, width: `${row.rate}%`, opacity: 0.7 }} />
+            <div className="h-full rounded-full" style={{ backgroundColor: accHex, width: `${row.rate}%`, opacity: 0.7 }} />
           </div>
         </div>
       </div>
@@ -1606,35 +1615,35 @@ function DetailStatsModal({ habits, logs, onClose, th, lang }: {
 
         {/* Üst özet: akım zincir + ortalamalar */}
         <div ref={summaryRef} className="space-y-1">
-          <p className={`text-xs uppercase tracking-wide ${th.textMuted}`}>{t("summaryTitle", lang)}</p>
-          <div className="flex" style={{ background: th.bg }}>
-            <div className={`flex flex-col items-center gap-1 flex-1 rounded-2xl border p-3.5 ${th.card}`} style={{ marginRight: 10 }}>
-              <span className="flex items-center justify-center w-7 h-7 rounded-full opacity-20" style={{ background: th.accent3 }}>
+          <p className={`text-xs uppercase tracking-wide pl-4 ${rTitle}`}>{t("summaryTitle", lang)}</p>
+          <div className="flex" style={{ background: rBg }}>
+            <div className={`flex flex-col items-center gap-1 flex-1 rounded-2xl border p-3.5 ${rCard}`} style={{ marginRight: 10 }}>
+              <span className="flex items-center justify-center w-7 h-7 rounded-full opacity-20" style={{ background: acc3Hex }}>
                 <Flame size={14} className="text-black" />
               </span>
               <span className={`text-xl font-bold ${th.accent3}`}>{maxStreak}</span>
-              <span className={`text-[10px] text-center leading-tight ${th.textMuted}`}>{t("yourStreak", lang)}</span>
+              <span className={`text-[10px] text-center leading-tight ${rMuted}`}>{t("yourStreak", lang)}</span>
             </div>
-            <div className={`flex flex-col items-center gap-1 flex-1 rounded-2xl border p-3.5 ${th.card}`} style={{ marginRight: 10 }}>
+            <div className={`flex flex-col items-center gap-1 flex-1 rounded-2xl border p-3.5 ${rCard}`} style={{ marginRight: 10 }}>
               <span className={`text-xl font-bold ${th.accent}`}>%{avg7}</span>
-              <span className={`text-[10px] text-center leading-tight ${th.textMuted}`}>{t("avg7", lang)}</span>
+              <span className={`text-[10px] text-center leading-tight ${rMuted}`}>{t("avg7", lang)}</span>
             </div>
-            <div className={`flex flex-col items-center gap-1 flex-1 rounded-2xl border p-3.5 ${th.card}`}>
+            <div className={`flex flex-col items-center gap-1 flex-1 rounded-2xl border p-3.5 ${rCard}`}>
               <span className={`text-xl font-bold ${th.accent2}`}>%{avg30}</span>
-              <span className={`text-[10px] text-center leading-tight ${th.textMuted}`}>{t("avg30", lang)}</span>
+              <span className={`text-[10px] text-center leading-tight ${rMuted}`}>{t("avg30", lang)}</span>
             </div>
           </div>
           {maxStreak > 0 ? (
             <div className="flex items-center justify-center gap-2 rounded-2xl border px-3 py-2.5 text-xs font-semibold"
-              style={{ background: th.bg, color: "inherit" }}>
+              style={{ background: rBg, color: "#111827" }}>
               <Flame size={14} className={th.accent} />
               <span className={th.accent}>{t("motivateKeep", lang, { n: String(maxStreak) })}</span>
             </div>
           ) : (
             <div className="flex items-center justify-center gap-2 rounded-2xl border px-3 py-2.5 text-xs font-semibold"
-              style={{ background: th.bg, color: "inherit" }}>
+              style={{ background: rBg, color: "#111827" }}>
               <Flame size={14} className={th.textMuted} />
-              <span className={th.textSecondary}>{t("motivateStart", lang)}</span>
+              <span className={rMuted}>{t("motivateStart", lang)}</span>
             </div>
           )}
           <ShareRow target={summaryRef} share={share} shareId={1} sharing={sharing} th={th} lang={lang} />
@@ -1643,12 +1652,12 @@ function DetailStatsModal({ habits, logs, onClose, th, lang }: {
         {/* Aylık takvim özeti */}
         {active.length > 0 && (
           <div ref={monthReportRef} className="space-y-1">
-            <p className={`text-xs uppercase tracking-wide ${th.textMuted}`}>{t("reportMonthTitle", lang)}</p>
-            <div className={`rounded-2xl border p-4 ${th.card}`} style={{ background: th.bg }}>
-              <p className={`text-center text-sm font-semibold mb-2 ${th.textPrimary}`}>{monthLabel}</p>
+            <p className={`text-xs uppercase tracking-wide pl-4 ${rTitle}`}>{t("reportMonthTitle", lang)}</p>
+            <div className={`rounded-2xl border p-4 ${rCard}`} style={{ background: rBg }}>
+              <p className={`text-center text-sm font-semibold mb-2 ${rText}`}>{monthLabel}</p>
               <div className="flex text-center mb-1">
                 {weekKeysC.map((k) => (
-                  <span key={k} className={`flex-1 text-[9px] font-semibold uppercase ${th.textMuted}`}>{t(k, lang)}</span>
+                  <span key={k} className={`flex-1 text-[9px] font-semibold uppercase ${rMuted}`}>{t(k, lang)}</span>
                 ))}
               </div>
               <div className="flex flex-col">
@@ -1656,9 +1665,9 @@ function DetailStatsModal({ habits, logs, onClose, th, lang }: {
                   <div key={wi} className="flex" style={wi ? { marginTop: 4 } : undefined}>
                     {week.map((cell, ci) => (
                       <div key={ci}
-                        className={`relative h-9 flex-1 rounded-lg border flex items-center justify-center text-[11px] font-semibold transition ${cell.inMonth ? th.card : "opacity-30 " + th.card} ${cell.isToday ? "ring-1 ring-current " + th.accent : ""}`}
+                        className={`relative h-9 flex-1 rounded-lg border flex items-center justify-center text-[11px] font-semibold transition ${cell.inMonth ? "border-slate-200" : "opacity-30 border-slate-200"} ${cell.isToday ? "ring-1 ring-current " + th.accent : ""}`}
                         style={{ ...(ci < week.length - 1 ? { marginRight: 4 } : {}), ...(monthCellBg(cell) ? { background: monthCellBg(cell) } : {}) }}>
-                        <span className={cell.completed >= cell.due && cell.due > 0 ? "text-slate-950" : cell.completed > 0 ? "text-slate-950" : `${th.textPrimary}`}>
+                        <span className={cell.completed >= cell.due && cell.due > 0 ? "text-slate-950" : cell.completed > 0 ? "text-slate-950" : `${rText}`}>
                           {Number(cell.date.slice(8, 10))}
                         </span>
                       </div>
@@ -1679,11 +1688,11 @@ function DetailStatsModal({ habits, logs, onClose, th, lang }: {
         {/* Son 12 hafta katkı haritası */}
         {active.length > 0 && (
           <div ref={heatmapRef} className="space-y-1">
-            <p className={`text-xs uppercase tracking-wide ${th.textMuted}`}>{t("reportHeatmapTitle", lang)}</p>
-            <div className={`rounded-2xl border p-4 ${th.card}`} style={{ background: th.bg }}>
+            <p className={`text-xs uppercase tracking-wide pl-4 ${rTitle}`}>{t("reportHeatmapTitle", lang)}</p>
+            <div className={`rounded-2xl border p-4 ${rCard}`} style={{ background: rBg }}>
               <div className="flex mb-1">
                 {heatmap.map((c, i) => (
-                  <span key={i} className={`flex-1 text-[9px] text-center truncate ${th.textMuted}`}>{c.label}</span>
+                  <span key={i} className={`flex-1 text-[9px] text-center truncate ${rMuted}`}>{c.label}</span>
                 ))}
               </div>
               <div className="flex">
@@ -1697,15 +1706,15 @@ function DetailStatsModal({ habits, logs, onClose, th, lang }: {
                 ))}
               </div>
               <div className="flex items-center justify-between gap-2 mt-3">
-                <span className={`text-[10px] ${th.textMuted}`}>
+                <span className={`text-[10px] ${rMuted}`}>
                   {t("reportHeatmapSummary", lang, { done: String(heatTotals.done), total: String(heatTotals.total) })}
                 </span>
                 <span className="flex items-center gap-1.5 text-[10px]">
-                  <span className={th.textMuted}>{t("reportHeatmapLess", lang)}</span>
+                  <span className={rMuted}>{t("reportHeatmapLess", lang)}</span>
                   {[0.08, 0.35, 0.7, 1].map((a) => (
                     <span key={a} className="w-3 h-3 rounded-[3px]" style={{ background: `rgba(${heatA}, ${a})` }} />
                   ))}
-                  <span className={th.textMuted}>{t("reportHeatmapMore", lang)}</span>
+                  <span className={rMuted}>{t("reportHeatmapMore", lang)}</span>
                 </span>
               </div>
             </div>
@@ -1716,8 +1725,8 @@ function DetailStatsModal({ habits, logs, onClose, th, lang }: {
         {/* Pasta (donut) grafiği: son 30 günün durum dağılımı */}
         {hasBreakdown && (
           <div ref={donutRef} className="space-y-1">
-            <p className={`text-xs uppercase tracking-wide ${th.textMuted}`}>{t("reportPieTitle", lang)}</p>
-            <div className={`rounded-2xl border p-4 ${th.card}`} style={{ background: th.bg }}>
+            <p className={`text-xs uppercase tracking-wide pl-4 ${rTitle}`}>{t("reportPieTitle", lang)}</p>
+            <div className={`rounded-2xl border p-4 ${rCard}`} style={{ background: rBg }}>
               <div className="flex items-center justify-center gap-6">
                 <div className="relative w-36 h-36 shrink-0">
                   <svg viewBox="0 0 128 128" className="w-full h-full">
@@ -1744,8 +1753,8 @@ function DetailStatsModal({ habits, logs, onClose, th, lang }: {
         {/* XY (çizgi) grafiği: son 30 gün günlük tamamlama yüzdesi */}
         {hasTrend && (
           <div ref={lineRef} className="space-y-1">
-            <p className={`text-xs uppercase tracking-wide ${th.textMuted}`}>{t("reportTrendTitle", lang)}</p>
-            <div className={`rounded-2xl border p-4 ${th.card}`} style={{ background: th.bg }}>
+            <p className={`text-xs uppercase tracking-wide pl-4 ${rTitle}`}>{t("reportTrendTitle", lang)}</p>
+            <div className={`rounded-2xl border p-4 ${rCard}`} style={{ background: rBg }}>
               <svg viewBox={`0 0 ${L_W} ${L_H}`} className="w-full h-24">
                 {[25, 50, 75].map((y) => (
                   <line key={y} x1={L_PX} y1={y} x2={L_W - L_PX} y2={y} stroke="#e5e7eb" strokeWidth="1" strokeDasharray="3 4" />
@@ -1765,12 +1774,12 @@ function DetailStatsModal({ habits, logs, onClose, th, lang }: {
 
         {/* Son 30 gün grafiği (6 × 5 gün dilimi) */}
         <div ref={last30Ref} className="space-y-1">
-          <p className={`text-xs uppercase tracking-wide ${th.textMuted}`}>{t("last30Days", lang)}</p>
-          <div className={`rounded-2xl border p-4 ${th.card}`} style={{ background: th.bg }}>
+          <p className={`text-xs uppercase tracking-wide pl-4 ${rTitle}`}>{t("last30Days", lang)}</p>
+          <div className={`rounded-2xl border p-4 ${rCard}`} style={{ background: rBg }}>
             <div className="flex items-end justify-between gap-2.5 h-32">
               {buckets.map((b) => (
                 <div key={b.label} className="flex-1 flex flex-col items-center gap-1.5 min-w-0">
-                  <span className={`text-[10px] font-semibold ${b.due === 0 ? th.textMuted : th.accent}`}>
+                  <span className={`text-[10px] font-semibold ${b.due === 0 ? rMuted : th.accent}`}>
                     {b.due === 0 ? "—" : "%" + b.pct}
                   </span>
                   <div className="w-full rounded-t-lg"
@@ -1778,9 +1787,9 @@ function DetailStatsModal({ habits, logs, onClose, th, lang }: {
                       height: `${Math.max(5, (b.pct / maxBucket) * 78)}px`,
                       background: b.due === 0
                         ? "rgba(0,0,0,0.08)"
-                        : `linear-gradient(180deg, ${th.accent} 0%, ${th.accent3} 100%)`,
+                        : `linear-gradient(180deg, ${accHex} 0%, ${acc3Hex} 100%)`,
                     }} />
-                  <span className={`text-[9px] uppercase ${th.textMuted}`}>{b.label}</span>
+                  <span className={`text-[9px] uppercase ${rMuted}`}>{b.label}</span>
                 </div>
               ))}
             </div>
@@ -1790,17 +1799,17 @@ function DetailStatsModal({ habits, logs, onClose, th, lang }: {
 
         {/* Alışkanlık bazında seri */}
         <div ref={perHabitRef} className="space-y-1">
-          <p className={`text-xs uppercase tracking-wide ${th.textMuted}`}>{t("perHabit", lang)}</p>
-          <div className={`rounded-2xl border p-2 ${th.card} space-y-1`}>
+          <p className={`text-xs uppercase tracking-wide pl-4 ${rTitle}`}>{t("perHabit", lang)}</p>
+          <div className={`rounded-2xl border p-2 ${rCard} space-y-1`}>
             {habitStreaks.length === 0 && (
-              <p className={`text-xs text-center py-3 ${th.textMuted}`}>{t("noHabits", lang)}</p>
+              <p className={`text-xs text-center py-3 ${rMuted}`}>{t("noHabits", lang)}</p>
             )}
             {streakGroups.standalone.map(({ habit, current, best }) => (
               <StreakLine key={habit.id} habit={habit} current={current} best={best} />
             ))}
             {streakGroups.packs.map((pack) => (
               <Fragment key={pack.id}>
-                <p className={`flex items-center gap-1.5 text-[10px] uppercase tracking-wide font-bold mt-1 ${th.textMuted}`}>
+                <p className={`flex items-center gap-1.5 text-[10px] uppercase tracking-wide font-bold mt-1 ${rMuted}`}>
                   <span className="text-xs">{pack.template?.emoji}</span>
                   {t(pack.template?.nameKey ?? pack.id, lang)}
                 </p>
@@ -1815,10 +1824,10 @@ function DetailStatsModal({ habits, logs, onClose, th, lang }: {
 
         {/* En tutarlı alışkanlıklar */}
         <div ref={consistentRef} className="space-y-1">
-          <p className={`text-xs uppercase tracking-wide ${th.textMuted}`}>{t("consistentTitle", lang)}</p>
-          <div className={`rounded-2xl border p-3 ${th.card} space-y-2`} style={{ background: th.bg }}>
+          <p className={`text-xs uppercase tracking-wide pl-4 ${rTitle}`}>{t("consistentTitle", lang)}</p>
+          <div className={`rounded-2xl border p-3 ${rCard} space-y-2`} style={{ background: rBg }}>
             {consistent.length === 0 && (
-              <p className={`text-xs text-center py-3 ${th.textMuted}`}>{t("noHabits", lang)}</p>
+              <p className={`text-xs text-center py-3 ${rMuted}`}>{t("noHabits", lang)}</p>
             )}
             {consistentGroups.standalone.map(({ row, rank }) => (
               <Fragment key={row.habit.id}>
@@ -1827,7 +1836,7 @@ function DetailStatsModal({ habits, logs, onClose, th, lang }: {
             ))}
             {consistentGroups.packs.map((pack) => (
               <Fragment key={pack.id}>
-                <p className={`flex items-center gap-1.5 text-[10px] uppercase tracking-wide font-bold ${th.textMuted}`}>
+                <p className={`flex items-center gap-1.5 text-[10px] uppercase tracking-wide font-bold ${rMuted}`}>
                   <span className="text-xs">{pack.template?.emoji}</span>
                   {t(pack.template?.nameKey ?? pack.id, lang)}
                 </p>
