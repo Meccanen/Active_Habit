@@ -820,7 +820,7 @@ function TemplateNameModal({ template, onSave, onClose, th, lang }: {
         </div>
         <div>
           <p className={`text-xs uppercase tracking-wide mb-2 ${th.textMuted}`}>{t("challengeName", lang)}</p>
-          <input value={name} onChange={(e) => setName(e.target.value)} autoFocus maxLength={60}
+          <input value={name} onChange={(e) => setName(e.target.value)} maxLength={60}
             placeholder={t(template.nameKey, lang)}
             className={`w-full px-4 py-3 rounded-xl border bg-transparent text-sm outline-none ${th.card} ${th.textPrimary}`} />
           <p className={`text-xs mt-1.5 ${th.textMuted}`}>{t("challengeNameHint", lang)}</p>
@@ -2050,11 +2050,12 @@ export default function App() {
   };
 
   const handleOpenCustom = async () => {
-    if (!CUSTOM_CHALLENGE_REWARD) { setCustomUnlocked(true); setShowCustomModal(true); return; }
-    if (customUnlocked) { setShowCustomModal(true); return; }
+    if (!CUSTOM_CHALLENGE_REWARD) { setCustomUnlocked(true); setShowChallengePicker(false); setShowCustomModal(true); return; }
+    if (customUnlocked) { setShowChallengePicker(false); setShowCustomModal(true); return; }
     const granted = await unlockWithRewardedInterstitial();
     if (granted) {
       setCustomUnlocked(true);
+      setShowChallengePicker(false);
       setShowCustomModal(true);
     }
   };
@@ -2410,7 +2411,7 @@ export default function App() {
 
       {showChallengePicker && (
         <ChallengePicker customUnlocked={customUnlocked}
-          onPickTemplate={(tpl) => setTemplatePending(tpl)}
+          onPickTemplate={(tpl) => { setShowChallengePicker(false); setTemplatePending(tpl); }}
           onCustom={handleOpenCustom}
           onClose={() => setShowChallengePicker(false)} th={th} lang={lang} />
       )}
