@@ -269,7 +269,7 @@ function habitDisplayName(h: Habit, lang: LangCode): string {
     const item = set?.habits.find((it) => it.emoji === h.emoji);
     if (item) return t(item.nameKey, lang);
   }
-  return habitDisplayName(h, lang);
+  return h.name.startsWith("set") ? t(h.name, lang) : h.name;
 }
 
 // ============================================================================
