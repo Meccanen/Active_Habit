@@ -253,6 +253,24 @@ const en: Record<string, string> = {
   restoreSuccess: "Data restored",
   restoreError: "Invalid backup file",
   backupNote: "Your data is stored only on this device. Back up regularly, especially before changing phones.",
+
+  notifTab: "Notifications",
+  notifCheckinTitle: "Daily reminder",
+  notifCheckinDesc: "If you haven't opened the app by the set time, a motivating reminder is sent.",
+  notifTime: "Time",
+  notifWeeklyTitle: "Weekly summary",
+  notifWeeklyDesc: "Monday morning with your last week's progress.",
+  notifMonthlyTitle: "Monthly summary",
+  notifMonthlyDesc: "On the 1st with your last month's summary.",
+  notifEnabled: "Enabled",
+  notifDisabled: "Disabled",
+  notifPermissionDenied: "Notification permission is denied. Please allow it in your device settings.",
+  notifBodyStreak: "🔥 {n}-day streak — keep it going today!",
+  notifBodyPct: "{pct}% completion rate, awesome — keep going!",
+  notifBodyMissed: "{emoji} {name} was skipped a few days — a small step is enough.",
+  notifBodyGeneric: "Today's habits are waiting for you! Take a minute.",
+  notifWeeklyBody: "Last week you reached {pct}% ({done}/{total} days). Detailed stats await you.",
+  notifMonthlyBody: "Last month: {pct}% completion · longest streak {streak} days. Detailed stats await you.",
 };
 
 const de: Record<string, string> = {
@@ -502,6 +520,24 @@ const de: Record<string, string> = {
   restoreSuccess: "Daten wiederhergestellt",
   restoreError: "Ungültige Sicherungsdatei",
   backupNote: "Deine Daten werden nur auf diesem Gerät gespeichert. Sichere regelmäßig, besonders vor einem Handy-Wechsel.",
+
+  notifTab: "Benachrichtigungen",
+  notifCheckinTitle: "Tägliche Erinnerung",
+  notifCheckinDesc: "Wenn du die App bis zur eingestellten Uhrzeit nicht geöffnet hast, wird eine motivierende Erinnerung gesendet.",
+  notifTime: "Uhrzeit",
+  notifWeeklyTitle: "Wochenübersicht",
+  notifWeeklyDesc: "Montagmorgen mit deinem Fortschritt der letzten Woche.",
+  notifMonthlyTitle: "Monatsübersicht",
+  notifMonthlyDesc: "Am 1. mit deiner Zusammenfassung des letzten Monats.",
+  notifEnabled: "Aktiv",
+  notifDisabled: "Aus",
+  notifPermissionDenied: "Benachrichtigungsberechtigung verweigert. Bitte in den Geräteeinstellungen erlauben.",
+  notifBodyStreak: "🔥 {n}-Tage-Serie — mach heute weiter!",
+  notifBodyPct: "{pct}% Erfüllungsrate, stark — weiter so!",
+  notifBodyMissed: "{emoji} {name} wurde ein paar Tage ausgelassen — ein kleiner Schritt genügt.",
+  notifBodyGeneric: "Die Gewohnheiten von heute warten auf dich! Nimm dir eine Minute.",
+  notifWeeklyBody: "Letzte Woche hast du {pct}% erreicht ({done}/{total} Tage). Detaillierte Statistiken warten.",
+  notifMonthlyBody: "Letzter Monat: {pct}% Erfüllung · längste Serie {streak} Tage. Detaillierte Statistiken warten.",
 };
 
 const tr: Record<string, string> = {
@@ -750,6 +786,24 @@ const tr: Record<string, string> = {
   restoreSuccess: "Veri geri yüklendi",
   restoreError: "Geçersiz yedek dosyası",
   backupNote: "Verilerin yalnızca bu cihazda saklanır. Özellikle telefon değiştirmeden önce düzenli yedek al.",
+
+  notifTab: "Bildirimler",
+  notifCheckinTitle: "Günlük hatırlatma",
+  notifCheckinDesc: "Belirlenen saate kadar uygulamayı açmadıysan motive edici bir hatırlatma gönderilir.",
+  notifTime: "Saat",
+  notifWeeklyTitle: "Haftalık özet",
+  notifWeeklyDesc: "Pazartesi sabahı geçen haftanın ilerlemenle.",
+  notifMonthlyTitle: "Aylık özet",
+  notifMonthlyDesc: "Ayın 1'inde son ayın özetiyle.",
+  notifEnabled: "Açık",
+  notifDisabled: "Kapalı",
+  notifPermissionDenied: "Bildirim izni verilmedi. Cihaz ayarlarından izin ver.",
+  notifBodyStreak: "🔥 {n} günlük bir serin var — bugünü de tamamla!",
+  notifBodyPct: "%{pct} tamamlama oranın harika — devam et!",
+  notifBodyMissed: "{emoji} {name} birkaç gündür atlanıyor — küçük bir adım yeter.",
+  notifBodyGeneric: "Bugünün alışkanlıkları seni bekliyor! Bir dakikanı ayır.",
+  notifWeeklyBody: "Geçen hafta %{pct} tamamladın ({done}/{total} gün). Detaylı istatistikler seni bekliyor.",
+  notifMonthlyBody: "Son ay: %{pct} tamamlanma · en uzun serin {streak} gün. Detaylı istatistikler seni bekliyor.",
 };
 
 const ar: Record<string, string> = {
@@ -998,6 +1052,24 @@ const ar: Record<string, string> = {
   restoreSuccess: "تمت استعادة البيانات",
   restoreError: "ملف نسخة احتياطية غير صالح",
   backupNote: "تُخزَّن بياناتك على هذا الجهاز فقط. قم بعمل نسخة احتياطية بانتظام، خاصة قبل تغيير الهاتف.",
+
+  notifTab: "الإشعارات",
+  notifCheckinTitle: "تذكير يومي",
+  notifCheckinDesc: "إذا لم تفتح التطبيق قبل الوقت المضبوط، يُرسل تذكير تحفيزي.",
+  notifTime: "الوقت",
+  notifWeeklyTitle: "ملخص أسبوعي",
+  notifWeeklyDesc: "صباح الاثنين مع تقدمك في الأسبوع الماضي.",
+  notifMonthlyTitle: "ملخص شهري",
+  notifMonthlyDesc: "في أول الشهر مع ملخص الشهر الماضي.",
+  notifEnabled: "مفعل",
+  notifDisabled: "معطل",
+  notifPermissionDenied: "تم رفض إذن الإشعارات. يرجى السماح من إعدادات الجهاز.",
+  notifBodyStreak: "🔥 لديك سلسلة {n} يوم — أكملها اليوم!",
+  notifBodyPct: "نسبة إنجاز {pct}% رائعة — واصل!",
+  notifBodyMissed: "{emoji} {name} تُرك بضعة أيام — خطوة صغيرة تكفي.",
+  notifBodyGeneric: "عادات اليوم في انتظارك! خصص دقيقة واحدة.",
+  notifWeeklyBody: "الأسبوع الماضي أنجزت {pct}% ({done}/{total} يومًا). إحصاءاتك التفصيلية بانتظارك.",
+  notifMonthlyBody: "الشهر الماضي: إنجاز {pct}% · أطول سلسلة {streak} يومًا. إحصاءاتك التفصيلية بانتظارك.",
 };
 
 const ur: Record<string, string> = {
@@ -1246,6 +1318,24 @@ const ur: Record<string, string> = {
   restoreSuccess: "ڈیٹا بحال ہو گیا",
   restoreError: "غلط بیک اپ فائل",
   backupNote: "آپ کا ڈیٹا صرف اس آلے پر محفوظ ہے۔ فون تبدیل کرنے سے پہلے باقاعدگی سے بیک اپ لیں۔",
+
+  notifTab: "اطلاعات",
+  notifCheckinTitle: "روزانہ یاد دہانی",
+  notifCheckinDesc: "اگر آپ نے مقررہ وقت تک ایپ نہیں کھولی تو ایک حوصلہ افزا یاد دہانی بھیجی جاتی ہے۔",
+  notifTime: "وقت",
+  notifWeeklyTitle: "ہفتہ وار خلاصہ",
+  notifWeeklyDesc: "پیر کی صبح گزشتہ ہفتے کی پیش رفت کے ساتھ۔",
+  notifMonthlyTitle: "ماہانہ خلاصہ",
+  notifMonthlyDesc: "پہلی تاریخ کو گزشتہ مہینے کے خلاصے کے ساتھ۔",
+  notifEnabled: "فعال",
+  notifDisabled: "غیر فعال",
+  notifPermissionDenied: "اطلاعات کی اجازت مسترد کر دی گئی۔ براہ کرم ڈیوائس کی ترتیبات سے اجازت دیں۔",
+  notifBodyStreak: "🔥 آپ کا {n} روزہ سلسلہ ہے — آج بھی جاری رکھیں!",
+  notifBodyPct: "{pct}% تکمیل کی شرح زبردست ہے — جاری رکھیں!",
+  notifBodyMissed: "{emoji} {name} کچھ دن سے چھوٹ رہی ہے — ایک چھوٹا قدم کافی ہے۔",
+  notifBodyGeneric: "آج کی عادات آپ کا انتظار کر رہی ہیں! ایک منٹ نکالیں۔",
+  notifWeeklyBody: "پچھلے ہفتے آپ نے {pct}% مکمل کیا ({done}/{total} دن)۔ تفصیلی اعداد و شمار منتظر ہیں۔",
+  notifMonthlyBody: "پچھلے مہینے: {pct}% تکمیل · سب سے طویل سلسلہ {streak} دن۔ تفصیلی اعداد و شمار منتظر ہیں۔",
 };
 
 const LANG_MAP: Record<string, LangCode> = {

@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "motion/react";
 import {
   Check, Settings, Palette, X, Plus, Trash2, Pencil, Flame, Calendar,
   BarChart3, Trophy, ChevronRight, ChevronLeft, ChevronDown, Zap, Shield,
-  Mail, Lock, Star, Sparkles, Download, Upload, FileImage, FileText,
+  Mail, Lock, Star, Sparkles, Download, Upload, FileImage, FileText, Bell,
 } from "lucide-react";
 import type { Habit, Challenge, ChallengeTemplate, Unit, AppState } from "./types";
 import { t, detectLanguage, LangCode } from "./utils/i18n";
@@ -33,6 +33,10 @@ import {
   type BackupSettings,
 } from "./services/backupService";
 import { shareReportBlockAsImage, shareReportBlockAsPdf, type ReportBlockOptions } from "./services/reportShare";
+import {
+  scheduleNotifications, readNotifPrefs, writeNotifPrefs,
+  type NotifPrefs,
+} from "./services/notificationService";
 
 export type FontScale = "normal" | "large" | "xlarge";
 
@@ -319,11 +323,23 @@ function ModalHeader({ title, onClose, th }: { title: string; onClose: () => voi
 }
 
 // ============================================================================
-// AYARLAR PANELİ — Tema / Dil / Hakkında (Destekçi Rozeti dahil)
+// AYARLAR PANELİ — Tema / Dil / Bildirimler / Hakkında (Destekçi Rozeti dahil)
 // ============================================================================
+function Toggle({ on, onClick, th }: {
+  on: boolean; onClick: () => void; th: typeof THEMES[ThemeKey];
+}) {
+  return (
+    <button role="switch" aria-checked={on} onClick={onClick}
+      className={`h-6 w-11 shrink-0 rounded-full p-0.5 transition-colors ${on ? "" : "bg-slate-400/40"}`}
+      style={on ? { backgroundColor: th.preview[1] } : undefined}>
+      <span className={`block h-5 w-5 rounded-full bg-white shadow transition-transform ${on ? "translate-x-5" : ""}`} />
+    </button>
+  );
+}
+
 function SettingsPanel({
   theme, setTheme, onClose, th, lang, setLang, initialTab,
-  setFontScale, setState, onNotify,
+  setFontScale, setState, onNotify, notifPrefs, setNotifPrefs,
 }: {
   theme: ThemeKey; setTheme: (k: ThemeKey) => void;
   onClose: () => void; th: typeof THEMES[ThemeKey];
@@ -331,9 +347,11 @@ function SettingsPanel({
   setFontScale: (f: FontScale) => void;
   setState: React.Dispatch<React.SetStateAction<AppState>>;
   onNotify: (msg: string) => void;
-  initialTab?: "tema" | "dil" | "yedekleme" | "hakkinda";
+  initialTab?: "tema" | "dil" | "yedekleme" | "bildirim" | "hakkinda";
+  notifPrefs: NotifPrefs;
+  setNotifPrefs: (p: NotifPrefs) => void;
 }) {
-  const [tab, setTab] = useState<"tema" | "dil" | "yedekleme" | "hakkinda">(initialTab || "tema");
+  const [tab, setTab] = useState<"tema" | "dil" | "yedekleme" | "bildirim" | "hakkinda">(initialTab || "tema");
   const [isSupporter, setIsSupporter] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [pendingRestore, setPendingRestore] = useState<{ state: AppState; settings: BackupSettings } | null>(null);
@@ -394,10 +412,10 @@ function SettingsPanel({
     <Modal onClose={onClose} th={th}>
       <ModalHeader title={t("settings", lang)} onClose={onClose} th={th} />
       <div className={`flex border-b ${th.header} px-2`}>
-        {(["tema", "dil", "yedekleme", "hakkinda"] as const).map((tb) => (
+        {(["tema", "dil", "bildirim", "yedekleme", "hakkinda"] as const).map((tb) => (
           <button key={tb} onClick={() => setTab(tb)}
             className={`flex-1 py-3 text-sm font-medium transition ${tab === tb ? th.accent : th.textMuted}`}>
-            {tb === "tema" ? t("themeTab", lang) : tb === "dil" ? t("language", lang) : tb === "yedekleme" ? t("backupTab", lang) : t("about", lang)}
+            {tb === "tema" ? t("themeTab", lang) : tb === "dil" ? t("language", lang) : tb === "bildirim" ? t("notifTab", lang) : tb === "yedekleme" ? t("backupTab", lang) : t("about", lang)}
           </button>
         ))}
       </div>
@@ -430,6 +448,50 @@ function SettingsPanel({
                   {l.label}
                 </button>
               ))}
+            </div>
+          </div>
+        )}
+
+        {tab === "bildirim" && (
+          <div className="space-y-4">
+            <div className={`rounded-2xl border p-4 ${th.card}`}>
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <div className="flex items-center gap-2">
+                  <Bell size={16} className={th.accent} />
+                  <h3 className={`text-sm font-semibold ${th.textPrimary}`}>{t("notifCheckinTitle", lang)}</h3>
+                </div>
+                <Toggle on={notifPrefs.checkinOn} onClick={() => setNotifPrefs({ ...notifPrefs, checkinOn: !notifPrefs.checkinOn })} th={th} />
+              </div>
+              <p className={`text-xs leading-relaxed mb-3 ${th.textSecondary}`}>{t("notifCheckinDesc", lang)}</p>
+              <div className={`flex items-center gap-2 p-2 rounded-xl border ${th.card}`}>
+                <p className={`text-xs ${th.textMuted}`}>{t("notifTime", lang)}</p>
+                <input type="time" value={notifPrefs.checkinTime}
+                  disabled={!notifPrefs.checkinOn}
+                  onChange={(e) => e.target.value && setNotifPrefs({ ...notifPrefs, checkinTime: e.target.value })}
+                  className={`flex-1 rounded-lg border px-2 py-1.5 text-sm outline-none bg-transparent disabled:opacity-40 ${th.card} ${th.textPrimary}`} />
+              </div>
+            </div>
+
+            <div className={`rounded-2xl border p-4 ${th.card}`}>
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <div className="flex items-center gap-2">
+                  <BarChart3 size={16} className={th.accent2} />
+                  <h3 className={`text-sm font-semibold ${th.textPrimary}`}>{t("notifWeeklyTitle", lang)}</h3>
+                </div>
+                <Toggle on={notifPrefs.weeklyOn} onClick={() => setNotifPrefs({ ...notifPrefs, weeklyOn: !notifPrefs.weeklyOn })} th={th} />
+              </div>
+              <p className={`text-xs leading-relaxed ${th.textSecondary}`}>{t("notifWeeklyDesc", lang)}</p>
+            </div>
+
+            <div className={`rounded-2xl border p-4 ${th.card}`}>
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <div className="flex items-center gap-2">
+                  <Calendar size={16} className={th.accent2} />
+                  <h3 className={`text-sm font-semibold ${th.textPrimary}`}>{t("notifMonthlyTitle", lang)}</h3>
+                </div>
+                <Toggle on={notifPrefs.monthlyOn} onClick={() => setNotifPrefs({ ...notifPrefs, monthlyOn: !notifPrefs.monthlyOn })} th={th} />
+              </div>
+              <p className={`text-xs leading-relaxed ${th.textSecondary}`}>{t("notifMonthlyDesc", lang)}</p>
             </div>
           </div>
         )}
@@ -2054,7 +2116,9 @@ export default function App() {
 
   // ---- Modaller ----
   const [showSettings, setShowSettings] = useState(false);
-  const [settingsTab, setSettingsTab] = useState<"tema" | "dil" | "yedekleme" | "hakkinda">("tema");
+  const [settingsTab, setSettingsTab] = useState<"tema" | "dil" | "yedekleme" | "bildirim" | "hakkinda">("tema");
+  const [notifPrefs, setNotifPrefsState] = useState<NotifPrefs>(readNotifPrefs);
+  const setNotifPrefs = (p: NotifPrefs) => { writeNotifPrefs(p); setNotifPrefsState(p); };
   const [showHabitModal, setShowHabitModal] = useState(false);
   const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
   const [showChallengePicker, setShowChallengePicker] = useState(false);
@@ -2297,6 +2361,30 @@ export default function App() {
     const unsub = onBannerHeightChange(setBannerHeight);
     return unsub;
   }, []);
+
+  // ---- Bildirim planlama (yerel, native'de) ----
+  const habitsKey = useMemo(
+    () => habits.map((h) => `${h.id}:${h.archived}:${h.frequency.kind === "daily" ? "d" : h.frequency.days.join("")}`).join("|"),
+    [habits]
+  );
+  useEffect(() => {
+    let alive = true;
+    const run = () => {
+      if (!alive) return;
+      void scheduleNotifications(habits, logs, notifPrefs, lang);
+    };
+    const h = setTimeout(run, 1200);
+    const onVis = () => {
+      if (document.visibilityState === "visible") run();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      alive = false;
+      clearTimeout(h);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [habitsKey, notifPrefs.checkinOn, notifPrefs.checkinTime, notifPrefs.weeklyOn, notifPrefs.monthlyOn, dayKey, lang]);
 
   // ---- Türetilmiş görünüm verisi ----
   const todayStats = useMemo(() => getTodayStats(habits, logs, today), [habits, logs, today]);
@@ -2726,6 +2814,7 @@ export default function App() {
       {showSettings && (
         <SettingsPanel theme={themeKey} setTheme={setTheme} lang={lang} setLang={setLang}
           setFontScale={setFontScale} setState={setStateRaw} onNotify={notify}
+          notifPrefs={notifPrefs} setNotifPrefs={setNotifPrefs}
           onClose={() => setShowSettings(false)} th={th} initialTab={settingsTab} />
       )}
 
