@@ -4,6 +4,7 @@ import {
   Check, Settings, Palette, X, Plus, Trash2, Pencil, Flame, Calendar,
   BarChart3, Trophy, ChevronRight, ChevronLeft, ChevronDown, Zap, Shield,
   Mail, Lock, Star, Sparkles, Download, Upload, FileImage, FileText, Bell,
+  Languages, Info,
 } from "lucide-react";
 import type { Habit, Challenge, ChallengeTemplate, Unit, AppState } from "./types";
 import { t, detectLanguage, LangCode } from "./utils/i18n";
@@ -411,13 +412,24 @@ function SettingsPanel({
     <>
     <Modal onClose={onClose} th={th}>
       <ModalHeader title={t("settings", lang)} onClose={onClose} th={th} />
-      <div className={`flex border-b ${th.header} px-2`}>
-        {(["tema", "dil", "bildirim", "yedekleme", "hakkinda"] as const).map((tb) => (
-          <button key={tb} onClick={() => setTab(tb)}
-            className={`flex-1 py-3 text-sm font-medium transition ${tab === tb ? th.accent : th.textMuted}`}>
-            {tb === "tema" ? t("themeTab", lang) : tb === "dil" ? t("language", lang) : tb === "bildirim" ? t("notifTab", lang) : tb === "yedekleme" ? t("backupTab", lang) : t("about", lang)}
-          </button>
-        ))}
+      <div className={`rounded-2xl border p-2 mx-4 mt-4 ${th.card}`}>
+        <div className="grid grid-cols-2 gap-2">
+          {([
+            ["tema", Palette], ["dil", Languages], ["bildirim", Bell],
+            ["yedekleme", Download], ["hakkinda", Info],
+          ] as const).map(([tb, Icon]) => {
+            const active = tab === tb;
+            const label = tb === "tema" ? t("themeTab", lang) : tb === "dil" ? t("language", lang) : tb === "bildirim" ? t("notifTab", lang) : tb === "yedekleme" ? t("backupTab", lang) : t("about", lang);
+            return (
+              <button key={tb} onClick={() => setTab(tb)} aria-selected={active}
+                className={`flex flex-col items-center gap-1 rounded-xl border px-2 py-2.5 transition active:scale-[0.98] ${tb === "hakkinda" ? "col-span-2" : ""} ${active ? th.textPrimary : th.textMuted}`}
+                style={active ? { borderColor: th.preview[1], backgroundColor: th.preview[1] + "26" } : { borderColor: "transparent" }}>
+                <Icon size={18} className={`shrink-0 ${active ? th.accent : ""}`} />
+                <span className={`text-xs font-medium leading-tight text-center ${active ? th.accent : ""}`}>{label}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <div className="overflow-y-auto flex-1 p-5 space-y-4">
