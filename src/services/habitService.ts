@@ -255,6 +255,48 @@ export const HABIT_SETS: HabitSetTemplate[] = [
       { emoji: "🙏", nameKey: "setMind5", color: "text-amber-500", unit: "count", targetPerDay: 1, frequency: { kind: "daily" } },
     ],
   },
+  {
+    id: "set_sleep",
+    emoji: "🌙",
+    nameKey: "setSleep",
+    descKey: "setSleepDesc",
+    color: "text-indigo-400",
+    habits: [
+      { emoji: "⏰", nameKey: "setSleep1", color: "text-sky-500", unit: "count", targetPerDay: 1, frequency: { kind: "daily" } },
+      { emoji: "📵", nameKey: "setSleep2", color: "text-fuchsia-500", unit: "count", targetPerDay: 1, frequency: { kind: "daily" } },
+      { emoji: "🛏️", nameKey: "setSleep3", color: "text-orange-500", unit: "count", targetPerDay: 1, frequency: { kind: "daily" } },
+      { emoji: "🧘", nameKey: "setSleep4", color: "text-emerald-500", unit: "count", targetPerDay: 1, frequency: { kind: "daily" } },
+      { emoji: "🌅", nameKey: "setSleep5", color: "text-yellow-500", unit: "count", targetPerDay: 1, frequency: { kind: "daily" } },
+    ],
+  },
+  {
+    id: "set_nutrition",
+    emoji: "🥗",
+    nameKey: "setNutrition",
+    descKey: "setNutritionDesc",
+    color: "text-lime-400",
+    habits: [
+      { emoji: "💧", nameKey: "setNutrition1", color: "text-sky-500", unit: "count", targetPerDay: 8, frequency: { kind: "daily" } },
+      { emoji: "🥦", nameKey: "setNutrition2", color: "text-emerald-500", unit: "count", targetPerDay: 1, frequency: { kind: "daily" } },
+      { emoji: "🥤", nameKey: "setNutrition3", color: "text-orange-500", unit: "count", targetPerDay: 1, frequency: { kind: "daily" } },
+      { emoji: "🍳", nameKey: "setNutrition4", color: "text-yellow-500", unit: "count", targetPerDay: 1, frequency: { kind: "daily" } },
+      { emoji: "🍎", nameKey: "setNutrition5", color: "text-fuchsia-500", unit: "count", targetPerDay: 1, frequency: { kind: "daily" } },
+    ],
+  },
+  {
+    id: "set_reading",
+    emoji: "📚",
+    nameKey: "setReading",
+    descKey: "setReadingDesc",
+    color: "text-teal-400",
+    habits: [
+      { emoji: "📖", nameKey: "setReading1", color: "text-sky-500", unit: "minutes", targetPerDay: 30, frequency: { kind: "daily" } },
+      { emoji: "✍️", nameKey: "setReading2", color: "text-fuchsia-500", unit: "count", targetPerDay: 1, frequency: { kind: "daily" } },
+      { emoji: "🧠", nameKey: "setReading3", color: "text-emerald-500", unit: "count", targetPerDay: 1, frequency: { kind: "weekly", days: [0] } },
+      { emoji: "🎧", nameKey: "setReading4", color: "text-orange-500", unit: "minutes", targetPerDay: 20, frequency: { kind: "weekly", days: [2, 4, 6] } },
+      { emoji: "🎯", nameKey: "setReading5", color: "text-yellow-500", unit: "minutes", targetPerDay: 5, frequency: { kind: "daily" } },
+    ],
+  },
 ];
 
 /** Hazır bir setin içindeki tüm habit'leri tek seferde ekler. */
