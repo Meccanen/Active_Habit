@@ -23,9 +23,21 @@ function normalize(s: string): string {
   return s.trim().toLocaleLowerCase();
 }
 
+/**
+ * Şablon challenge için saklanacak adı döndürür. Ad, şablonun varsayılan
+ * adıysa (herhangi bir dilde ya da nameKey olarak) nameKey saklanır — böylece
+ * oluşturulan habit/challenge adı dil değişince otomatik çevrilir. Kullanıcının
+ * özel olarak yazdığı adlar olduğu gibi korunur.
+ */
+function templateStoredName(name: string, template: ChallengeTemplate): string {
+  const n = normalize(name);
+  if (n === template.nameKey.toLocaleLowerCase()) return template.nameKey;
+  if (TMPL_LANGS.some((l) => normalize(t(template.nameKey, l)) === n)) return template.nameKey;
+  return name.trim();
+}
+
 function migrateChallengeNames(state: AppState): AppState {
   let changed = false;
-  const normalize = (s: string) => s.trim().toLocaleLowerCase();
   const same = (a: string, b: string) => normalize(a) === normalize(b);
   // Eski sürümler challenge ile habit'e aynı literal adı yazıyordu; habit adı
   // challenge adıyla birebir aynıysa varsayılan ad olduğu kesindir.
@@ -328,9 +340,10 @@ export function createChallengeFromTemplate(
   startDate: string,
   lang: string
 ): AppState {
+  const storedName = templateStoredName(name, template) || template.nameKey;
   const habit: Habit = {
     id: makeId("habit"),
-    name: name.trim() || template.nameKey,
+    name: storedName,
     emoji: template.emoji,
     color: "accent",
     frequency: { kind: "daily" },
@@ -345,7 +358,7 @@ export function createChallengeFromTemplate(
     id: makeId("challenge"),
     templateId: template.id,
     emoji: template.emoji,
-    name: name.trim() || template.nameKey,
+    name: storedName,
     totalDays: template.days,
     startDate,
     habitId: habit.id,
