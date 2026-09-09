@@ -283,6 +283,24 @@ function renderWeekdayDots(h: Habit, cc: string) {
 }
 
 /**
+ * İkon alanına yazılan metni tek bir "grapheme cluster"a indirir (tek emoji —
+ * aile/bayrak gibi çok kod noktalı emojiler de tek karakter sayılır). Çoklu
+ * emoji girişi görsel alanı taşırdığı için 1 parça fazlasıyla yeterlidir.
+ */
+function firstGrapheme(input: string): string {
+  const v = input.trim();
+  if (!v) return "";
+  try {
+    for (const s of new Intl.Segmenter(undefined, { granularity: "grapheme" }).segment(v)) {
+      return s.segment;
+    }
+    return "";
+  } catch {
+    return Array.from(v)[0] ?? "";
+  }
+}
+
+/**
  * Hazır paket habit'lerinin adını paket şablonundan çevirir. Eski kayıtlarda
  * habit adı i18n anahtarı yerine literal ("set_...", "setMorning1" gibi)
  * saklanmış olabilir — packId + emoji eşleşmesiyle doğru yerelleştirilmiş
@@ -743,8 +761,8 @@ function HabitModal({ existing, onSave, onClose, th, lang }: {
               </div>
               <div className="mt-3">
                 <p className={`text-xs mb-1.5 ${th.textMuted}`}>{t("iconCustom", lang)}</p>
-                <input type="text" value={emoji && !HABIT_EMOJIS.includes(emoji) ? emoji : ""} maxLength={12}
-                  onChange={(e) => setEmoji(e.target.value)}
+                <input type="text" value={emoji && !HABIT_EMOJIS.includes(emoji) ? emoji : ""}
+                  onChange={(e) => setEmoji(firstGrapheme(e.target.value))}
                   placeholder={t("iconCustomPh", lang)}
                   className={`w-full px-4 py-2.5 rounded-xl border bg-transparent text-sm outline-none ${th.card} ${th.textPrimary}`} />
               </div>
@@ -995,8 +1013,8 @@ function CustomChallengeModal({ onSave, onClose, th, lang }: {
           </div>
           <div className="mt-3">
             <p className={`text-xs mb-1.5 ${th.textMuted}`}>{t("iconCustom", lang)}</p>
-            <input type="text" value={emoji && !HABIT_EMOJIS.includes(emoji) ? emoji : ""} maxLength={12}
-              onChange={(e) => setEmoji(e.target.value)}
+            <input type="text" value={emoji && !HABIT_EMOJIS.includes(emoji) ? emoji : ""}
+              onChange={(e) => setEmoji(firstGrapheme(e.target.value))}
               placeholder={t("iconCustomPh", lang)}
               className={`w-full px-4 py-2.5 rounded-xl border bg-transparent text-sm outline-none ${th.card} ${th.textPrimary}`} />
           </div>
