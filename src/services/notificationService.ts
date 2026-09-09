@@ -72,6 +72,17 @@ export async function requestNotificationPermission(): Promise<boolean> {
   }
 }
 
+/** Sormadan yalnızca izin durumunu döndürür (web'de true). */
+export async function checkNotificationPermission(): Promise<boolean> {
+  if (!isNative()) return true;
+  try {
+    const perms = await LocalNotifications.checkPermissions();
+    return perms.display === "granted";
+  } catch {
+    return false;
+  }
+}
+
 function ensureChannel(lang: LangCode): void {
   try {
     LocalNotifications.createChannel({
@@ -112,15 +123,21 @@ function rangeCounts(
   return { due, done };
 }
 
-function anyDue(habits: Habit[], dateStr: string): boolean {
-  return habits.some((h) => !h.archived && isHabitDue(h, dateStr));
+function hasIncompleteDue(habits: Habit[], logs: HabitLog[], dateStr: string): boolean {
+  return habits.some(
+    (h) => !h.archived && isHabitDue(h, dateStr) && !isHabitComplete(h, logs, dateStr)
+  );
 }
 
-/** Belirli bir tarihten SONRA, zorunlu alışkanlığı olan ilk gün (LOOKAHEAD içinde). */
-function nextDueDay(habits: Habit[], afterDate: string): string | null {
-  let d = addDays(afterDate, 1);
+/**
+ * Bugünden itibaren (bugün dahil), zorunlu ama henüz tamamlanmamış alışkanlığı
+ * olan ilk gün (LOOKAHEAD içinde). Bugünün saati geçmişse planlama zaten
+ * scheduleAt guard'ında atlanır ve bir sonraki zorunlu güne düşülür.
+ */
+function nextDueDay(habits: Habit[], logs: HabitLog[], fromDate: string): string | null {
+  let d = fromDate;
   for (let i = 0; i < LOOKAHEAD_DAYS; i++, d = addDays(d, 1)) {
-    if (anyDue(habits, d)) return d;
+    if (hasIncompleteDue(habits, logs, d)) return d;
   }
   return null;
 }
@@ -245,7 +262,7 @@ export async function scheduleNotifications(
   const today = todayStr();
 
   if (prefs.checkinOn && habits.some((h) => !h.archived)) {
-    const target = nextDueDay(habits, today);
+    const target = nextDueDay(habits, logs, today);
     if (target) {
       const atStr = target + "T" + (prefs.checkinTime || "13:00") + ":00";
       scheduleAt(CHECKIN_ID, t("notifCheckinTitle", lang), pickCheckinText(habits, logs, lang, target), atStr);

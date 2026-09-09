@@ -35,7 +35,7 @@ import {
 } from "./services/backupService";
 import { shareReportBlockAsImage, shareReportBlockAsPdf, type ReportBlockOptions } from "./services/reportShare";
 import {
-  scheduleNotifications, readNotifPrefs, writeNotifPrefs,
+  scheduleNotifications, readNotifPrefs, writeNotifPrefs, checkNotificationPermission,
   type NotifPrefs,
 } from "./services/notificationService";
 
@@ -390,7 +390,16 @@ function SettingsPanel({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [pendingRestore, setPendingRestore] = useState<{ state: AppState; settings: BackupSettings } | null>(null);
   const [showBackupOptions, setShowBackupOptions] = useState(false);
+  const [notifPermOk, setNotifPermOk] = useState(true);
   useEffect(() => { checkIsSupporter().then(setIsSupporter); }, []);
+  useEffect(() => {
+    if (tab !== "bildirim") return;
+    let alive = true;
+    void checkNotificationPermission().then((ok) => {
+      if (alive) setNotifPermOk(ok);
+    });
+    return () => { alive = false; };
+  }, [tab]);
 
   const openBackupOptions = () => setShowBackupOptions(true);
 
@@ -499,6 +508,11 @@ function SettingsPanel({
 
         {tab === "bildirim" && (
           <div className="space-y-4">
+            {!notifPermOk && (
+              <div className={`rounded-2xl border p-4 ${th.card}`}>
+                <p className={`text-xs leading-relaxed text-amber-500`}>{t("notifPermissionDenied", lang)}</p>
+              </div>
+            )}
             <div className={`rounded-2xl border p-4 ${th.card}`}>
               <div className="flex items-center justify-between gap-2 mb-1">
                 <div className="flex items-center gap-2">
