@@ -294,7 +294,22 @@ function habitDisplayName(h: Habit, lang: LangCode): string {
     const item = set?.habits.find((it) => it.emoji === h.emoji);
     if (item) return t(item.nameKey, lang);
   }
-  return h.name.startsWith("set") ? t(h.name, lang) : h.name;
+  const isKey = h.name.startsWith("set") || h.name.startsWith("template");
+  return isKey ? t(h.name, lang) : h.name;
+}
+
+/**
+ * Challenge adını gösterir. Şablon challenge'ları templateId → nameKey
+ * üzerinden çevrilir (dil değişince otomatik güncellenir); custom
+ * challenge'lar kendi kullanıcı adını korur.
+ */
+function challengeDisplayName(c: Challenge, lang: LangCode): string {
+  if (c.templateId !== "custom") {
+    const tpl = CHALLENGE_TEMPLATES.find((t) => t.id === c.templateId);
+    if (tpl) return t(tpl.nameKey, lang);
+  }
+  const isKey = c.name.startsWith("set") || c.name.startsWith("template");
+  return isKey ? t(c.name, lang) : c.name;
 }
 
 // ============================================================================
@@ -1037,13 +1052,13 @@ function ChallengeDetailModal({ challenge, habit, logs, today, onToggle, onCance
 
   return (
     <Modal onClose={onClose} th={th}>
-      <ModalHeader title={challenge.name} onClose={onClose} th={th} />
+      <ModalHeader title={challengeDisplayName(challenge, lang)} onClose={onClose} th={th} />
       <div className="overflow-y-auto flex-1 p-5 space-y-4">
         <div className={`rounded-2xl border p-4 ${th.card}`}>
           <div className="flex items-center gap-3">
             <span className="text-4xl">{challenge.emoji}</span>
             <div className="flex-1 min-w-0">
-              <p className={`text-sm font-semibold ${th.textPrimary}`}>{challenge.name}</p>
+              <p className={`text-sm font-semibold ${th.textPrimary}`}>{challengeDisplayName(challenge, lang)}</p>
               <p className={`text-xs mt-0.5 ${th.textMuted}`}>
                 {t("startsOn", lang)}: {challenge.startDate} · {t("endsOn", lang)}: {end}
               </p>
@@ -1949,7 +1964,10 @@ function GraceModal({ usedGraceChallenges, resetChallenges, completedChallenges,
   challenges: Challenge[];
   onClose: () => void; th: typeof THEMES[ThemeKey]; lang: LangCode;
 }) {
-  const nameOf = (id: string) => challenges.find((c) => c.id === id)?.name || "";
+  const nameOf = (id: string) => {
+    const c = challenges.find((x) => x.id === id);
+    return c ? challengeDisplayName(c, lang) : "";
+  };
   return (
     <Modal onClose={onClose} th={th}>
       <ModalHeader title={t("challengeWarn", lang)} onClose={onClose} th={th} />
@@ -2416,7 +2434,7 @@ export default function App() {
   const habitFor = (id: string) => habits.find((h) => h.id === id);
   const challengeHabitName = (c: Challenge) => {
     const h = habitFor(c.habitId);
-    return h ? `${h.emoji} ${habitDisplayName(h, lang)}` : (c.name.startsWith("set") ? t(c.name, lang) : c.name);
+    return h ? `${h.emoji} ${habitDisplayName(h, lang)}` : `${c.emoji} ${challengeDisplayName(c, lang)}`;
   };
 
   // ---- AKSİYONLAR ----
@@ -2443,7 +2461,7 @@ export default function App() {
   };
 
   const handlePickTemplate = (tpl: ChallengeTemplate, name?: string) => {
-    const finalName = (name || "").trim() || t(tpl.nameKey, lang);
+    const finalName = (name || "").trim();
     const next = createChallengeFromTemplate(stateRef.current, tpl, finalName, todayStr(), lang);
     setStateRaw(next);
     setTemplatePending(null);
@@ -2776,7 +2794,7 @@ export default function App() {
                   <span className="text-4xl drop-shadow-lg">{c.emoji}</span>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <p className={`font-bold text-base truncate ${th.textPrimary}`}>{c.name}</p>
+                      <p className={`font-bold text-base truncate ${th.textPrimary}`}>{challengeDisplayName(c, lang)}</p>
                       {c.usedGrace && (
                         <span className={`shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full border border-orange-500/40 text-orange-500`}>º1</span>
                       )}
@@ -2807,7 +2825,7 @@ export default function App() {
                   <div className="flex items-center gap-3">
                     <span className="text-2xl">{c.emoji}</span>
                     <p className={`flex-1 text-sm font-semibold truncate ${th.textPrimary}`}>
-                      {c.name}
+                      {challengeDisplayName(c, lang)}
                       <span className={`ml-2 text-[10px] font-bold px-2 py-0.5 rounded-full border ${c.status === "completed" ? "border-emerald-500/40 text-emerald-500" : "border-rose-500/40 text-rose-500"}`}>
                         {c.status === "completed" ? t("challengeCompleted", lang) : t("challengeFailed", lang)}
                       </span>
