@@ -15,26 +15,41 @@ const TMPL_LANGS: LangCode[] = ["tr", "en", "de", "ar", "ur"];
 
 /**
  * Eski veride şablon challenge'larının adı seçilen dilde literal olarak
- * saklanıyordu (ör. "21 Gün Alışkanlık"). Dil değişince çevrilebilmesi için
- * bu literal'ları template.nameKey'e geri taşır. Kullanıcının özel olarak
+ * saklanıyordu (ör. "14 Gün Sprint"). Dil değişince çevrilebilmesi için bu
+ * literal'ları template.nameKey'e geri taşır. Kullanıcının özel olarak
  * verdiği adlara (hiçbir dildeki şablon adıyla eşleşmeyen) dokunulmaz.
  */
+function normalize(s: string): string {
+  return s.trim().toLocaleLowerCase();
+}
+
 function migrateChallengeNames(state: AppState): AppState {
   let changed = false;
-  const isDefaultName = (name: string, tpl: ChallengeTemplate) =>
-    name === tpl.nameKey || TMPL_LANGS.some((l) => t(tpl.nameKey, l) === name);
+  const normalize = (s: string) => s.trim().toLocaleLowerCase();
+  const same = (a: string, b: string) => normalize(a) === normalize(b);
+  // Eski sürümler challenge ile habit'e aynı literal adı yazıyordu; habit adı
+  // challenge adıyla birebir aynıysa varsayılan ad olduğu kesindir.
+  const isDefaultName = (name: string, ch: Challenge) => {
+    const tpl = CHALLENGE_TEMPLATES.find((x) => x.id === ch.templateId);
+    if (!tpl) return false;
+    return (
+      same(name, tpl.nameKey) ||
+      TMPL_LANGS.some((l) => same(name, t(tpl.nameKey, l))) ||
+      same(name, ch.name)
+    );
+  };
   const habits = state.habits.map((h) => {
     const ch = state.challenges.find((c) => c.habitId === h.id);
     if (!ch || ch.templateId === "custom") return h;
     const tpl = CHALLENGE_TEMPLATES.find((x) => x.id === ch.templateId);
-    if (!tpl || h.name === tpl.nameKey || !isDefaultName(h.name, tpl)) return h;
+    if (!tpl || h.name === tpl.nameKey || !isDefaultName(h.name, ch)) return h;
     changed = true;
     return { ...h, name: tpl.nameKey };
   });
   const challenges = state.challenges.map((ch) => {
     if (ch.templateId === "custom") return ch;
     const tpl = CHALLENGE_TEMPLATES.find((x) => x.id === ch.templateId);
-    if (!tpl || ch.name === tpl.nameKey || !isDefaultName(ch.name, tpl)) return ch;
+    if (!tpl || ch.name === tpl.nameKey || !isDefaultName(ch.name, ch)) return ch;
     changed = true;
     return { ...ch, name: tpl.nameKey };
   });
