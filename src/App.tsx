@@ -736,6 +736,17 @@ function HabitModal({ existing, onSave, onClose, th, lang }: {
                     {e}
                   </button>
                 ))}
+                <button onClick={() => setEmoji("")}
+                  className={`h-12 rounded-xl border text-xs font-bold transition ${emoji === "" ? th.accent + " ring-2 ring-offset-2 " + th.accent : th.card + " " + th.cardHover}`}>
+                  {t("iconNone", lang)}
+                </button>
+              </div>
+              <div className="mt-3">
+                <p className={`text-xs mb-1.5 ${th.textMuted}`}>{t("iconCustom", lang)}</p>
+                <input type="text" value={emoji && !HABIT_EMOJIS.includes(emoji) ? emoji : ""} maxLength={12}
+                  onChange={(e) => setEmoji(e.target.value)}
+                  placeholder={t("iconCustomPh", lang)}
+                  className={`w-full px-4 py-2.5 rounded-xl border bg-transparent text-sm outline-none ${th.card} ${th.textPrimary}`} />
               </div>
             </div>
           </div>
@@ -977,6 +988,17 @@ function CustomChallengeModal({ onSave, onClose, th, lang }: {
                 {e}
               </button>
             ))}
+            <button onClick={() => setEmoji("")}
+              className={`h-12 rounded-xl border text-xs font-bold transition ${emoji === "" ? th.accent + " ring-2 ring-offset-2 " + th.accent : th.card + " " + th.cardHover}`}>
+              {t("iconNone", lang)}
+            </button>
+          </div>
+          <div className="mt-3">
+            <p className={`text-xs mb-1.5 ${th.textMuted}`}>{t("iconCustom", lang)}</p>
+            <input type="text" value={emoji && !HABIT_EMOJIS.includes(emoji) ? emoji : ""} maxLength={12}
+              onChange={(e) => setEmoji(e.target.value)}
+              placeholder={t("iconCustomPh", lang)}
+              className={`w-full px-4 py-2.5 rounded-xl border bg-transparent text-sm outline-none ${th.card} ${th.textPrimary}`} />
           </div>
         </div>
         <div>
