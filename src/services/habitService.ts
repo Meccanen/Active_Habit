@@ -7,8 +7,39 @@ import type {
   Unit,
 } from "../types";
 import { todayStr, evaluateChallenges, isHabitDue, getLogCount } from "../utils/habitHelper";
+import { t, LangCode } from "../utils/i18n";
 
 const STORAGE_KEY = "mht_state_v1";
+
+const TMPL_LANGS: LangCode[] = ["tr", "en", "de", "ar", "ur"];
+
+/**
+ * Eski veride şablon challenge'larının adı seçilen dilde literal olarak
+ * saklanıyordu (ör. "21 Gün Alışkanlık"). Dil değişince çevrilebilmesi için
+ * bu literal'ları template.nameKey'e geri taşır. Kullanıcının özel olarak
+ * verdiği adlara (hiçbir dildeki şablon adıyla eşleşmeyen) dokunulmaz.
+ */
+function migrateChallengeNames(state: AppState): AppState {
+  let changed = false;
+  const isDefaultName = (name: string, tpl: ChallengeTemplate) =>
+    name === tpl.nameKey || TMPL_LANGS.some((l) => t(tpl.nameKey, l) === name);
+  const habits = state.habits.map((h) => {
+    const ch = state.challenges.find((c) => c.habitId === h.id);
+    if (!ch || ch.templateId === "custom") return h;
+    const tpl = CHALLENGE_TEMPLATES.find((x) => x.id === ch.templateId);
+    if (!tpl || h.name === tpl.nameKey || !isDefaultName(h.name, tpl)) return h;
+    changed = true;
+    return { ...h, name: tpl.nameKey };
+  });
+  const challenges = state.challenges.map((ch) => {
+    if (ch.templateId === "custom") return ch;
+    const tpl = CHALLENGE_TEMPLATES.find((x) => x.id === ch.templateId);
+    if (!tpl || ch.name === tpl.nameKey || !isDefaultName(ch.name, tpl)) return ch;
+    changed = true;
+    return { ...ch, name: tpl.nameKey };
+  });
+  return changed ? { ...state, habits, challenges } : state;
+}
 
 export const HABIT_EMOJIS = [
   "💧", "🚶", "📖", "🧘", "🏃", "💪", "😴", "🥗", "🍎", "✍️",
@@ -82,11 +113,11 @@ export function loadState(): AppState {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return { habits: [], logs: [], challenges: [] };
     const parsed = JSON.parse(raw) as AppState;
-    return {
+    return migrateChallengeNames({
       habits: (parsed.habits ?? []).map((h) => ({ unit: "count", ...h }) as Habit),
       logs: parsed.logs ?? [],
       challenges: parsed.challenges ?? [],
-    };
+    });
   } catch (e) {
     console.error("[habitService] state okunamadı:", e);
     return { habits: [], logs: [], challenges: [] };
