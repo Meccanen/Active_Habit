@@ -603,6 +603,14 @@ export function toggleChallengeDay(state: AppState, challengeId: string, date: s
   return toggleLog(state, habit.id, date, habit.targetPerDay);
 }
 
+/** Süreye göre sıradaki önerilen challenge şablonunu döner (7→14→21→30→45→75). */
+export function getNextChallengeTemplate(totalDays: number): ChallengeTemplate | null {
+  const tierDays = [7, 14, 21, 30, 45, 75];
+  const nextDays = tierDays.find((d) => d > totalDays);
+  if (!nextDays) return null;
+  return CHALLENGE_TEMPLATES.find((t) => t.kind === "days" && t.days === nextDays) ?? null;
+}
+
 // ---- Sıfırlama / değerlendirme ---------------------------------------
 
 /**

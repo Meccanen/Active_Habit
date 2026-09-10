@@ -4,7 +4,7 @@ import {
   Check, Settings, Palette, X, Plus, Trash2, Pencil, Flame, Calendar,
   BarChart3, Trophy, ChevronRight, ChevronLeft, ChevronDown, Zap, Shield,
   Mail, Lock, Star, Sparkles, Download, Upload, FileImage, FileText, Bell,
-  Languages, Info,
+  Languages, Info, Share2,
 } from "lucide-react";
 import type { Habit, Challenge, ChallengeTemplate, Unit, AppState } from "./types";
 import { t, detectLanguage, LangCode } from "./utils/i18n";
@@ -13,6 +13,7 @@ import {
   loadState, saveState, addHabit, updateHabit, deleteHabit,
   toggleLog, createChallengeFromTemplate,
   deleteChallenge, toggleChallengeDay, setLogCount, recoverChallengeDays,
+  getNextChallengeTemplate,
   getActiveHabits, habitLogFor, addHabitSet, isHabitSetAdded, resolveHabitName,
   type HabitSetTemplate,
 } from "./services/habitService";
@@ -33,7 +34,7 @@ import {
   exportBackupWithShare, readCurrentSettings, parseBackup,
   type BackupSettings,
 } from "./services/backupService";
-import { shareReportBlockAsImage, shareReportBlockAsPdf, type ReportBlockOptions } from "./services/reportShare";
+import { shareReportBlockAsImage, shareReportBlockAsPdf, shareText, type ReportBlockOptions } from "./services/reportShare";
 import {
   scheduleNotifications, readNotifPrefs, writeNotifPrefs, checkNotificationPermission,
   type NotifPrefs,
@@ -988,7 +989,7 @@ function TemplateNameModal({ template, onSave, onClose, th, lang }: {
 // ============================================================================
 // CHALLENGE DETAY MODALI
 // ============================================================================
-function ChallengeDetailModal({ challenge, habit, logs, today, onToggle, onCancel, onClose, onRecover, recovering, th, lang }: {
+function ChallengeDetailModal({ challenge, habit, logs, today, onToggle, onCancel, onClose, onRecover, recovering, onShare, th, lang }: {
   challenge: Challenge;
   habit: Habit | undefined;
   logs: Parameters<typeof habitLogFor>[1];
@@ -997,7 +998,9 @@ function ChallengeDetailModal({ challenge, habit, logs, today, onToggle, onCance
   onCancel: () => void;
   onClose: () => void;
   onRecover: (id: string) => void;
-  recovering: boolean; th: typeof THEMES[ThemeKey]; lang: LangCode;
+  recovering: boolean;
+  onShare: (id: string) => void;
+  th: typeof THEMES[ThemeKey]; lang: LangCode;
 }) {
   const [confirming, setConfirming] = useState(false);
   const progress = habit
@@ -1035,6 +1038,13 @@ function ChallengeDetailModal({ challenge, habit, logs, today, onToggle, onCance
             </div>
           </div>
         </div>
+
+        {challenge.status === "completed" && (
+          <button onClick={() => onShare(challenge.id)}
+            className={`w-full py-2.5 rounded-xl text-sm font-bold border-2 border-emerald-500/40 text-emerald-500 transition active:scale-[0.98]`}>
+            <span className="inline-flex items-center justify-center gap-1.5"><Share2 size={14} /> {t("challengeShare", lang)}</span>
+          </button>
+        )}
 
         {challenge.needsRecovery && (
           <div className={`rounded-2xl border-2 border-orange-500/40 bg-orange-500/10 p-4 space-y-3`}>
@@ -1922,12 +1932,14 @@ function DetailStatsModal({ habits, logs, onClose, th, lang }: {
 // ============================================================================
 // KURTARMA / SIFIRLAMA UYARI MODALI
 // ============================================================================
-function GraceModal({ recoveryChallenges, resetChallenges, completedChallenges, challenges, onRecover, recovering, onClose, th, lang }: {
+function GraceModal({ recoveryChallenges, resetChallenges, completedChallenges, challenges, onRecover, onShareCompleted, onStartSuggested, recovering, onClose, th, lang }: {
   recoveryChallenges: string[];
   resetChallenges: string[];
   completedChallenges: string[];
   challenges: Challenge[];
   onRecover: (id: string) => void;
+  onShareCompleted: (id: string) => void;
+  onStartSuggested: (id: string) => void;
   recovering: boolean;
   onClose: () => void; th: typeof THEMES[ThemeKey]; lang: LangCode;
 }) {
@@ -1936,18 +1948,47 @@ function GraceModal({ recoveryChallenges, resetChallenges, completedChallenges, 
     return c ? challengeDisplayName(c, lang) : "";
   };
   const targetOf = (id: string) => challenges.find((x) => x.id === id)?.recoveryTargetDate ?? "";
+  const [skippedNext, setSkippedNext] = useState<Record<string, boolean>>({});
   return (
     <Modal onClose={onClose} th={th}>
       <ModalHeader title={t("challengeWarn", lang)} onClose={onClose} th={th} />
       <div className="overflow-y-auto flex-1 p-5 space-y-4">
         {completedChallenges.length > 0 && (
-          <div className={`rounded-2xl border-2 border-emerald-500/40 bg-emerald-500/10 p-4 flex items-start gap-2`}>
-            <Trophy size={18} className="text-emerald-500 shrink-0 mt-0.5" />
-            <div className="space-y-1">
-              {completedChallenges.map((id) => (
-                <p key={id} className="text-xs leading-relaxed text-emerald-500"><b>{nameOf(id)}</b> — {t("challengeDoneCelebration", lang)}</p>
-              ))}
-            </div>
+          <div className="space-y-3">
+            {completedChallenges.map((id) => {
+              const completed = challenges.find((x) => x.id === id);
+              const next = completed ? getNextChallengeTemplate(completed.totalDays) : null;
+              return (
+                <div key={id} className={`rounded-2xl border-2 border-emerald-500/40 bg-emerald-500/10 p-4 space-y-3`}>
+                  <div className="flex items-start gap-2">
+                    <Trophy size={18} className="text-emerald-500 shrink-0 mt-0.5" />
+                    <p className="text-xs leading-relaxed text-emerald-500"><b>{nameOf(id)}</b> — {t("challengeDoneCelebration", lang)}</p>
+                  </div>
+                  <button onClick={() => onShareCompleted(id)}
+                    className={`w-full py-2.5 rounded-xl text-sm font-bold border border-emerald-500/50 text-emerald-500 transition active:scale-[0.98]`}>
+                    <span className="inline-flex items-center justify-center gap-1.5"><Share2 size={14} /> {t("challengeShare", lang)}</span>
+                  </button>
+                  {next && !skippedNext[id] && (
+                    <div className={`rounded-xl border p-3 space-y-2 ${th.card}`}>
+                      <p className={`text-xs font-semibold ${th.textPrimary}`}>{next.emoji} {t("nextChallengeTitle", lang)}</p>
+                      <p className={`text-xs leading-relaxed ${th.textSecondary}`}>
+                        {t("nextChallengeDesc", lang, { name: nameOf(id), next: t(next.nameKey, lang), days: String(next.days) })}
+                      </p>
+                      <div className="flex gap-2">
+                        <button onClick={() => onStartSuggested(id)}
+                          className={`flex-[2] py-2.5 rounded-xl text-sm font-bold border-2 border-emerald-500/50 text-emerald-500 transition active:scale-[0.98]`}>
+                          {t("nextStart", lang)}
+                        </button>
+                        <button onClick={() => setSkippedNext((p) => ({ ...p, [id]: true }))}
+                          className={`flex-1 py-2.5 rounded-xl text-sm ${th.textSecondary} ${th.cardHover}`}>
+                          {t("nextLater", lang)}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
         {recoveryChallenges.length > 0 && (
@@ -2485,6 +2526,30 @@ export default function App() {
     notify(t("cancelChallengeConfirm", lang));
   };
 
+  // ---- Challenge tamamlandığında: paylaş + sıradakini öner ----
+  const handleShareCompleted = async (id: string) => {
+    const s = stateRef.current;
+    const c = s.challenges.find((x) => x.id === id);
+    if (!c) return;
+    const msg = t("challengeShareText", lang, {
+      emoji: c.emoji,
+      name: challengeDisplayName(c, lang),
+      days: String(c.totalDays),
+    });
+    const res = await shareText(t("challengeShareTitle", lang), msg);
+    if (res.copied) notify(t("challengeShareCopied", lang));
+  };
+
+  const handleStartSuggested = (id: string) => {
+    const s = stateRef.current;
+    const c = s.challenges.find((x) => x.id === id);
+    if (!c) return;
+    const next = getNextChallengeTemplate(c.totalDays);
+    if (!next) return;
+    setStateRaw(createChallengeFromTemplate(s, next, "", todayStr(), lang));
+    notify(t("startChallenge", lang));
+  };
+
   const handleToggleChallengeDay = (date: string) => {
     if (!challengeDetail) return;
     setStateRaw((prev) => toggleChallengeDay(prev, challengeDetail.id, date));
@@ -2926,6 +2991,7 @@ export default function App() {
         <ChallengeDetailModal challenge={challengeDetail} habit={habitFor(challengeDetail.habitId)}
           logs={logs} today={today} onToggle={handleToggleChallengeDay}
           onRecover={handleRecoverChallenge} recovering={recovering}
+          onShare={handleShareCompleted}
           onCancel={() => handleCancelChallenge(challengeDetail.id)}
           onClose={() => setChallengeDetail(null)} th={th} lang={lang} />
       )}
@@ -3013,6 +3079,7 @@ export default function App() {
         <GraceModal recoveryChallenges={gracePayload.recoveryIds} resetChallenges={gracePayload.resetIds}
           completedChallenges={gracePayload.completedIds} challenges={challenges}
           onRecover={handleRecoverChallenge} recovering={recovering}
+          onShareCompleted={handleShareCompleted} onStartSuggested={handleStartSuggested}
           onClose={() => setShowGraceModal(false)} th={th} lang={lang} />
       )}
     </div>

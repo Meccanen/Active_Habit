@@ -168,3 +168,68 @@ export async function shareReportBlockAsPdf(element: HTMLElement, opts: ReportBl
   const blob = pdf.output("blob");
   await deliver(blob, filename("pdf"));
 }
+
+// ---- Düz metin paylaşımı (ör. challenge tamamlama) ---------------------
+
+export interface ShareTextResult {
+  /** Genel paylaşım menüsü/panosu ile gönderildi (işlem tamam). */
+  shared: boolean;
+  /** Native paylaşım kullanılamadı; metin panoya kopyalandı. */
+  copied?: boolean;
+}
+
+/**
+ * Düz metni cihazın paylaşım menüsüyle gönderir. Web'de native paylaşım
+ * (navigator.share) yoksa veya kullanıcı iptal ederse panoya kopyalar.
+ */
+export async function shareText(title: string, text: string): Promise<ShareTextResult> {
+  if (Capacitor.getPlatform() === "web") {
+    const nav = navigator as Navigator & { share?: (d: { title?: string; text?: string }) => Promise<void> };
+    try {
+      if (nav.share) {
+        await nav.share({ title, text });
+        return { shared: true };
+      }
+    } catch (e) {
+      if (e instanceof DOMException && e.name === "AbortError") return { shared: false };
+      try {
+        await copyToClipboard(text);
+        return { shared: false, copied: true };
+      } catch {
+        return { shared: false };
+      }
+    }
+    try {
+      await copyToClipboard(text);
+      return { shared: false, copied: true };
+    } catch {
+      return { shared: false };
+    }
+  }
+  try {
+    await Share.share({ title, text });
+    return { shared: true };
+  } catch {
+    try {
+      await copyToClipboard(text);
+      return { shared: false, copied: true };
+    } catch {
+      return { shared: false };
+    }
+  }
+}
+
+async function copyToClipboard(text: string): Promise<void> {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+  const ta = document.createElement("textarea");
+  ta.value = text;
+  ta.style.position = "fixed";
+  ta.style.opacity = "0";
+  document.body.appendChild(ta);
+  ta.select();
+  document.execCommand("copy");
+  document.body.removeChild(ta);
+}
