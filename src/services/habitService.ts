@@ -199,6 +199,19 @@ export const CHALLENGE_TEMPLATES: ChallengeTemplate[] = [
     habitUnit: "minutes",
     habitColor: "text-emerald-500",
   },
+  {
+    id: "cp_language",
+    emoji: "🗣️",
+    nameKey: "packLanguage",
+    days: 21,
+    targetPerDay: 20,
+    color: "text-violet-400",
+    startCount: 1,
+    kind: "pack",
+    habitEmoji: "🗣️",
+    habitUnit: "minutes",
+    habitColor: "text-fuchsia-500",
+  },
 ];
 
 /**
@@ -378,6 +391,20 @@ export const HABIT_SETS: HabitSetTemplate[] = [
       { emoji: "🧠", nameKey: "setReading3", color: "text-emerald-500", unit: "count", targetPerDay: 1, frequency: { kind: "weekly", days: [0] } },
       { emoji: "🎧", nameKey: "setReading4", color: "text-orange-500", unit: "minutes", targetPerDay: 20, frequency: { kind: "weekly", days: [2, 4, 6] } },
       { emoji: "🎯", nameKey: "setReading5", color: "text-yellow-500", unit: "minutes", targetPerDay: 5, frequency: { kind: "daily" } },
+    ],
+  },
+  {
+    id: "set_digital",
+    emoji: "📵",
+    nameKey: "setDigital",
+    descKey: "setDigitalDesc",
+    color: "text-violet-400",
+    habits: [
+      { emoji: "📵", nameKey: "setDigital1", color: "text-fuchsia-500", unit: "minutes", targetPerDay: 30, frequency: { kind: "daily" } },
+      { emoji: "🔕", nameKey: "setDigital2", color: "text-sky-500", unit: "count", targetPerDay: 1, frequency: { kind: "weekly", days: [1, 2, 3, 4, 5] } },
+      { emoji: "📴", nameKey: "setDigital3", color: "text-orange-500", unit: "count", targetPerDay: 1, frequency: { kind: "daily" } },
+      { emoji: "🍽️", nameKey: "setDigital4", color: "text-emerald-500", unit: "count", targetPerDay: 1, frequency: { kind: "daily" } },
+      { emoji: "🌙", nameKey: "setDigital5", color: "text-indigo-500", unit: "count", targetPerDay: 1, frequency: { kind: "daily" } },
     ],
   },
 ];
