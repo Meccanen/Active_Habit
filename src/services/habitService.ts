@@ -127,6 +127,16 @@ export const CHALLENGE_TEMPLATES: ChallengeTemplate[] = [
     kind: "days",
   },
   {
+    id: "c45_mid",
+    emoji: "⛰️",
+    nameKey: "template45",
+    days: 45,
+    targetPerDay: 1,
+    color: "text-fuchsia-400",
+    startCount: 1,
+    kind: "days",
+  },
+  {
     id: "c75_transform",
     emoji: "⚡",
     nameKey: "template75",
