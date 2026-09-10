@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef, Fragment } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback, Fragment } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Check, Settings, Palette, X, Plus, Trash2, Pencil, Flame, Calendar,
@@ -34,7 +34,7 @@ import {
   exportBackupWithShare, readCurrentSettings, parseBackup,
   type BackupSettings,
 } from "./services/backupService";
-import { shareReportBlockAsImage, shareReportBlockAsPdf, shareText, type ReportBlockOptions } from "./services/reportShare";
+import { shareReportBlockAsImage, shareReportBlockAsPdf, shareChallengeCelebration, type ReportBlockOptions } from "./services/reportShare";
 import {
   scheduleNotifications, readNotifPrefs, writeNotifPrefs, checkNotificationPermission,
   type NotifPrefs,
@@ -2095,7 +2095,7 @@ export default function App() {
   const today = todayStr();
 
   // ---- Veri state (localStorage) ----
-  const [state, setStateRaw] = useState(loadState);
+  const [state, setState] = useState(loadState);
   const { habits, logs, challenges } = state;
   const [dayKey, setDayKey] = useState(today);
 
@@ -2113,6 +2113,19 @@ export default function App() {
     stateRef.current = state;
     saveState(state);
   }, [state]);
+
+  // setStateRaw: stateRef'i ANINDA senkron günceller. Aksi hâlde hemen
+  // arkadan çalışan runEvaluation() eski state'i görürdü ve örneğin son
+  // günün görevi tamamlandığında challenge anında tamamlanmazdı.
+  const setStateRaw = useCallback(
+    (arg: React.SetStateAction<AppState>) => {
+      const prev = stateRef.current;
+      const next = typeof arg === "function" ? (arg as (p: AppState) => AppState)(prev) : arg;
+      stateRef.current = next;
+      setState(next);
+    },
+    [setState]
+  );
 
   const activeHabits = useMemo(() => getActiveHabits(state), [state]);
 
@@ -2518,6 +2531,8 @@ export default function App() {
     setStateRaw(next);
     setShowGraceModal(false);
     notify(t("recoveryDone", lang));
+    // Kurtarma son günü tamamladıysa kutlamayı hemen tetikle.
+    runEvaluation();
   };
 
   const handleCancelChallenge = (id: string) => {
@@ -2531,13 +2546,34 @@ export default function App() {
     const s = stateRef.current;
     const c = s.challenges.find((x) => x.id === id);
     if (!c) return;
-    const msg = t("challengeShareText", lang, {
+    const habit = s.habits.find((h) => h.id === c.habitId);
+    const endDate = getChallengeEndDate(c);
+    const days: { date: string; done: boolean }[] = [];
+    let d = c.startDate;
+    let guard = 0;
+    while (d <= endDate && guard++ < 3700) {
+      days.push({ date: d, done: habit ? isHabitComplete(habit, s.logs, d) : false });
+      d = addDays(d, 1);
+    }
+    const headerDate = new Date().toLocaleDateString(lang, { day: "2-digit", month: "short", year: "numeric" });
+    const ok = await shareChallengeCelebration({
+      appName: t("appName", lang),
+      headerDate,
       emoji: c.emoji,
-      name: challengeDisplayName(c, lang),
-      days: String(c.totalDays),
+      title: challengeDisplayName(c, lang),
+      startLabel: t("challengeStartShort", lang),
+      endLabel: t("challengeEndShort", lang),
+      startDate: c.startDate,
+      endDate,
+      days,
+      doneCount: days.filter((x) => x.done).length,
+      totalDays: c.totalDays,
+      daysDoneLabel: t("challengeDaysDone", lang),
+      sealText: t("sealCompleted", lang),
+      footer: t("reportSource", lang),
+      locale: lang,
     });
-    const res = await shareText(t("challengeShareTitle", lang), msg);
-    if (res.copied) notify(t("challengeShareCopied", lang));
+    if (ok) notify(t("challengeShareReady", lang));
   };
 
   const handleStartSuggested = (id: string) => {

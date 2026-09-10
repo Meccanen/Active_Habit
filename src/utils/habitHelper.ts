@@ -350,6 +350,12 @@ export function evaluateChallenges(
         evals.completedIds.push(c.id);
         return { ...c, status: "completed" as const, completedAt: today };
       }
+      if (today >= endDate && isHabitComplete(habit, logs, today)) {
+        // SON GÜN SADECE BUGÜN BİTTİ: tüm önceki günler tam, bugünün (son
+        // günün) görevi de tamamlandı → ertesi günü BEKLEMEDEN anında tamamla.
+        evals.completedIds.push(c.id);
+        return { ...c, status: "completed" as const, completedAt: today };
+      }
       return c;
     }
 
