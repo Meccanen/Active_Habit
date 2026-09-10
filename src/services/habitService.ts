@@ -1,12 +1,13 @@
 import type {
   AppState,
   Challenge,
+  ChallengeEvalResult,
   ChallengeTemplate,
   Habit,
   HabitLog,
   Unit,
 } from "../types";
-import { todayStr, evaluateChallenges, isHabitDue, getLogCount } from "../utils/habitHelper";
+import { todayStr, addDays, evaluateChallenges, isHabitDue, isHabitComplete, getLogCount } from "../utils/habitHelper";
 import { t, LangCode } from "../utils/i18n";
 
 const STORAGE_KEY = "mht_state_v1";
@@ -527,7 +528,9 @@ export function createChallengeFromTemplate(
     totalDays: template.days,
     startDate,
     habitId: habit.id,
-    usedGrace: false,
+    needsRecovery: false,
+    recoveryTargetDate: null,
+    recoveryUsed: false,
     status: "active",
   };
   return {
@@ -550,6 +553,47 @@ export function deleteChallenge(state: AppState, id: string): AppState {
   return state;
 }
 
+/**
+ * Kurtarma (ödüllü reklam) başarıyla izlendikten sonra çağrılır:
+ * challenge'ın startDate'i ile bugün-1 arasındaki TÜM kaçırılan günleri
+ * tamamlanmış işaretler (log yazar) ve recoveryUsed=1 yapar. Böylece
+ * challenge sıfırlanmadan devam eder; bir daha kaçarlışa sıfırlanır.
+ * Saf fonksiyon: yeni state döner, kendisi kaydetmez (çağıran kaydeder).
+ */
+export function recoverChallengeDays(
+  state: AppState,
+  challengeId: string,
+  today: string
+): AppState {
+  const ch = state.challenges.find((c) => c.id === challengeId);
+  if (!ch || ch.status !== "active") return state;
+  const habit = state.habits.find((h) => h.id === ch.habitId);
+  if (!habit) return state;
+
+  const endDate = addDays(ch.startDate, ch.totalDays - 1);
+  const checkEnd = endDate < addDays(today, -1) ? endDate : addDays(today, -1);
+  let draft = state;
+  if (ch.startDate <= checkEnd) {
+    let d = ch.startDate;
+    let guard = 0;
+    while (d <= checkEnd && guard++ < 3700) {
+      if (!isHabitComplete(habit, draft.logs, d)) {
+        draft = setLogCount(draft, habit.id, d, habit.targetPerDay);
+      }
+      d = addDays(d, 1);
+    }
+  }
+
+  return {
+    ...draft,
+    challenges: draft.challenges.map((c) =>
+      c.id === challengeId
+        ? { ...c, needsRecovery: false, recoveryTargetDate: null, recoveryUsed: true }
+        : c
+    ),
+  };
+}
+
 /** Günlük challenge girişini işaretler (alışkanlığın toggle'ı ile aynı). */
 export function toggleChallengeDay(state: AppState, challengeId: string, date: string): AppState {
   const ch = state.challenges.find((c) => c.id === challengeId);
@@ -566,7 +610,7 @@ export function toggleChallengeDay(state: AppState, challengeId: string, date: s
  * mazeret hakkı / sıfırlama / tamamlama değerlendirmesini yapar,
  * sonucu ve yeni state'i döner.
  */
-export function evaluateAndPersist(state: AppState, today: string): { state: AppState; evals: { usedGraceIds: string[]; resetIds: string[]; completedIds: string[] } } {
+export function evaluateAndPersist(state: AppState, today: string): { state: AppState; evals: ChallengeEvalResult } {
   const { challenges, evals } = evaluateChallenges(
     state.challenges,
     state.habits,

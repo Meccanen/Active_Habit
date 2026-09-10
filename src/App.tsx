@@ -12,7 +12,7 @@ import {
   HABIT_EMOJIS, HABIT_COLORS, CHALLENGE_TEMPLATES, HABIT_SETS,
   loadState, saveState, addHabit, updateHabit, deleteHabit,
   toggleLog, createChallengeFromTemplate,
-  deleteChallenge, toggleChallengeDay, setLogCount,
+  deleteChallenge, toggleChallengeDay, setLogCount, recoverChallengeDays,
   getActiveHabits, habitLogFor, addHabitSet, isHabitSetAdded, resolveHabitName,
   type HabitSetTemplate,
 } from "./services/habitService";
@@ -988,14 +988,16 @@ function TemplateNameModal({ template, onSave, onClose, th, lang }: {
 // ============================================================================
 // CHALLENGE DETAY MODALI
 // ============================================================================
-function ChallengeDetailModal({ challenge, habit, logs, today, onToggle, onCancel, onClose, th, lang }: {
+function ChallengeDetailModal({ challenge, habit, logs, today, onToggle, onCancel, onClose, onRecover, recovering, th, lang }: {
   challenge: Challenge;
   habit: Habit | undefined;
   logs: Parameters<typeof habitLogFor>[1];
   today: string;
   onToggle: (date: string) => void;
   onCancel: () => void;
-  onClose: () => void; th: typeof THEMES[ThemeKey]; lang: LangCode;
+  onClose: () => void;
+  onRecover: (id: string) => void;
+  recovering: boolean; th: typeof THEMES[ThemeKey]; lang: LangCode;
 }) {
   const [confirming, setConfirming] = useState(false);
   const progress = habit
@@ -1034,12 +1036,21 @@ function ChallengeDetailModal({ challenge, habit, logs, today, onToggle, onCance
           </div>
         </div>
 
-        {challenge.usedGrace && (
-          <div className={`rounded-2xl border-2 border-orange-500/40 bg-orange-500/10 p-4 flex items-start gap-2`}>
-            <Trophy size={18} className="text-orange-500 shrink-0 mt-0.5" />
-            <p className="text-xs leading-relaxed text-orange-500">
-              {t("graceUsedDesc1", lang)} {t("graceUsedDesc2", lang)}
-            </p>
+        {challenge.needsRecovery && (
+          <div className={`rounded-2xl border-2 border-orange-500/40 bg-orange-500/10 p-4 space-y-3`}>
+            <div className="flex items-start gap-2">
+              <Zap size={18} className="text-orange-500 shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <p className="text-xs font-semibold text-orange-500">{t("recoveryTitle", lang)}</p>
+                <p className="text-xs leading-relaxed text-orange-500">
+                  {t("recoveryDesc1", lang, { date: challenge.recoveryTargetDate ?? "" })} {t("recoveryDesc2", lang)}
+                </p>
+              </div>
+            </div>
+            <button onClick={() => onRecover(challenge.id)} disabled={recovering}
+              className={`w-full py-2.5 rounded-xl text-sm font-bold border border-orange-500/50 text-orange-500 transition active:scale-[0.98] ${recovering ? "opacity-50" : ""}`}>
+              {recovering ? "…" : t("recoveryBtn", lang)}
+            </button>
           </div>
         )}
 
@@ -1909,19 +1920,22 @@ function DetailStatsModal({ habits, logs, onClose, th, lang }: {
 }
 
 // ============================================================================
-// MAZERET / SIFIRLAMA UYARI MODALI
+// KURTARMA / SIFIRLAMA UYARI MODALI
 // ============================================================================
-function GraceModal({ usedGraceChallenges, resetChallenges, completedChallenges, challenges, onClose, th, lang }: {
-  usedGraceChallenges: string[];
+function GraceModal({ recoveryChallenges, resetChallenges, completedChallenges, challenges, onRecover, recovering, onClose, th, lang }: {
+  recoveryChallenges: string[];
   resetChallenges: string[];
   completedChallenges: string[];
   challenges: Challenge[];
+  onRecover: (id: string) => void;
+  recovering: boolean;
   onClose: () => void; th: typeof THEMES[ThemeKey]; lang: LangCode;
 }) {
   const nameOf = (id: string) => {
     const c = challenges.find((x) => x.id === id);
     return c ? challengeDisplayName(c, lang) : "";
   };
+  const targetOf = (id: string) => challenges.find((x) => x.id === id)?.recoveryTargetDate ?? "";
   return (
     <Modal onClose={onClose} th={th}>
       <ModalHeader title={t("challengeWarn", lang)} onClose={onClose} th={th} />
@@ -1936,15 +1950,25 @@ function GraceModal({ usedGraceChallenges, resetChallenges, completedChallenges,
             </div>
           </div>
         )}
-        {usedGraceChallenges.length > 0 && (
-          <div className={`rounded-2xl border-2 border-orange-500/40 bg-orange-500/10 p-4 flex items-start gap-2`}>
-            <Zap size={18} className="text-orange-500 shrink-0 mt-0.5" />
-            <div className="space-y-1">
-              <p className="text-xs font-semibold text-orange-500">{t("graceUsedTitle", lang)}</p>
-              {usedGraceChallenges.map((id) => (
-                <p key={id} className="text-xs leading-relaxed text-orange-500"><b>{nameOf(id)}</b> — {t("graceUsedDesc1", lang)} {t("graceUsedDesc2", lang)}</p>
-              ))}
+        {recoveryChallenges.length > 0 && (
+          <div className={`rounded-2xl border-2 border-orange-500/40 bg-orange-500/10 p-4 space-y-3`}>
+            <div className="flex items-start gap-2">
+              <Zap size={18} className="text-orange-500 shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <p className="text-xs font-semibold text-orange-500">{t("recoveryTitle", lang)}</p>
+                {recoveryChallenges.map((id) => (
+                  <p key={id} className="text-xs leading-relaxed text-orange-500">
+                    <b>{nameOf(id)}</b> — {t("recoveryDesc1", lang, { date: targetOf(id) })} {t("recoveryDesc2", lang)}
+                  </p>
+                ))}
+              </div>
             </div>
+            {recoveryChallenges.map((id) => (
+              <button key={id} onClick={() => onRecover(id)} disabled={recovering}
+                className={`w-full py-2.5 rounded-xl text-sm font-bold border border-orange-500/50 text-orange-500 transition active:scale-[0.98] ${recovering ? "opacity-50" : ""}`}>
+                {recovering ? "…" : t("recoveryBtn", lang)}
+              </button>
+            ))}
           </div>
         )}
         {resetChallenges.length > 0 && (
@@ -2300,7 +2324,8 @@ export default function App() {
     );
   };
   const [showGraceModal, setShowGraceModal] = useState(false);
-  const [gracePayload, setGracePayload] = useState<{ usedGraceIds: string[]; resetIds: string[]; completedIds: string[] }>({ usedGraceIds: [], resetIds: [], completedIds: [] });
+  const [gracePayload, setGracePayload] = useState<{ recoveryIds: string[]; resetIds: string[]; completedIds: string[] }>({ recoveryIds: [], resetIds: [], completedIds: [] });
+  const [recovering, setRecovering] = useState(false);
   const [toast, setToast] = useState("");
 
   // Ödüllü reklamla kilit: oturum başına 1 kere. Reklam kapalıyken herkese açık.
@@ -2308,28 +2333,28 @@ export default function App() {
 
   const notify = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 3200); };
 
-  // ---- Challenge değerlendirmesi (mazeret / sıfırlama / tamamlama) ----
-  // Yalnızca GERÇEK geçişlerde (grace false→true, status değişimi, startDate
+  // ---- Challenge değerlendirmesi (kurtarma / sıfırlama / tamamlama) ----
+  // Yalnızca GERÇEK geçişlerde (recovery false→true, status değişimi, startDate
   // ileri taşınması) uyarı gösterilir — her açılışta aynı uyarı tekrarlanmaz.
   const runEvaluation = () => {
     const s = stateRef.current;
-    const before = new Map(s.challenges.map((c) => [c.id, c] as const));
+    const before = new Map<string, Challenge>(s.challenges.map((c) => [c.id, c]));
     const { challenges: nextCh, evals } = evaluateChallenges(s.challenges, s.habits, s.logs, todayStr());
     if (nextCh !== s.challenges) {
       setStateRaw((prev) => ({ ...prev, challenges: nextCh }));
     }
-    const usedGraceIds: string[] = [];
+    const recoveryIds: string[] = [];
     const resetIds: string[] = [];
     const completedIds: string[] = [];
     for (const c of nextCh) {
       const beforeC = before.get(c.id);
       if (!beforeC) continue;
       if (beforeC.status === "active" && c.status === "completed") completedIds.push(c.id);
-      if (!beforeC.usedGrace && c.usedGrace) usedGraceIds.push(c.id);
+      if (!beforeC.needsRecovery && c.needsRecovery) recoveryIds.push(c.id);
       if (beforeC.status === "active" && c.status === "active" && beforeC.startDate !== c.startDate) resetIds.push(c.id);
     }
-    if (usedGraceIds.length || resetIds.length || completedIds.length) {
-      setGracePayload({ usedGraceIds, resetIds, completedIds });
+    if (recoveryIds.length || resetIds.length || completedIds.length) {
+      setGracePayload({ recoveryIds, resetIds, completedIds });
       setTimeout(() => setShowGraceModal(true), 350);
     }
   };
@@ -2436,6 +2461,22 @@ export default function App() {
       setChartsUnlocked(true);
       setShowDetailStats(true);
     }
+  };
+
+  // Challenge kurtarma: ödüllü reklam izlenirse kaçırılan günleri tamamla.
+  const handleRecoverChallenge = async (id: string) => {
+    if (recovering) return;
+    const s = stateRef.current;
+    const ch = s.challenges.find((c) => c.id === id);
+    if (!ch || ch.status !== "active" || !ch.needsRecovery) return;
+    setRecovering(true);
+    const unlocked = await unlockWithRewardedInterstitial();
+    setRecovering(false);
+    if (!unlocked) return;
+    const next = recoverChallengeDays(s, id, todayStr());
+    setStateRaw(next);
+    setShowGraceModal(false);
+    notify(t("recoveryDone", lang));
   };
 
   const handleCancelChallenge = (id: string) => {
@@ -2758,8 +2799,8 @@ export default function App() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <p className={`font-bold text-base truncate ${th.textPrimary}`}>{challengeDisplayName(c, lang)}</p>
-                      {c.usedGrace && (
-                        <span className={`shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full border border-orange-500/40 text-orange-500`}>º1</span>
+                      {c.needsRecovery && (
+                        <span className={`shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full border border-orange-500/40 text-orange-500`}>{t("recoveryBadge", lang)}</span>
                       )}
                     </div>
                     <p className={`text-xs mt-0.5 ${th.textMuted}`}>
@@ -2884,6 +2925,7 @@ export default function App() {
       {challengeDetail && (
         <ChallengeDetailModal challenge={challengeDetail} habit={habitFor(challengeDetail.habitId)}
           logs={logs} today={today} onToggle={handleToggleChallengeDay}
+          onRecover={handleRecoverChallenge} recovering={recovering}
           onCancel={() => handleCancelChallenge(challengeDetail.id)}
           onClose={() => setChallengeDetail(null)} th={th} lang={lang} />
       )}
@@ -2968,8 +3010,9 @@ export default function App() {
       )}
 
       {showGraceModal && (
-        <GraceModal usedGraceChallenges={gracePayload.usedGraceIds} resetChallenges={gracePayload.resetIds}
+        <GraceModal recoveryChallenges={gracePayload.recoveryIds} resetChallenges={gracePayload.resetIds}
           completedChallenges={gracePayload.completedIds} challenges={challenges}
+          onRecover={handleRecoverChallenge} recovering={recovering}
           onClose={() => setShowGraceModal(false)} th={th} lang={lang} />
       )}
     </div>

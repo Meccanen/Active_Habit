@@ -300,14 +300,18 @@ function buildCell(
 }
 
 // ---------------------------------------------------------------------
-// Challenge mazeret (gizli 1 günlük izin) ve değerlendirme mantığı
+// Challenge kurtarma (kaçırılan günü ödüllü reklamla geri kazanma)
 // ---------------------------------------------------------------------
 
 /**
  * Aktif challenge'ları bugüne göre değerlendirir:
  * - Süresi biten ve tüm günleri tamamlanan → başarıyla biter (completed).
- * - Kaçırılan gün varsa ve mazeret hakkı KULLANILMAMIŞSA → hak kullanılır, uyarı döner.
- * - Kaçırılan gün varsa ve mazeret hakkı KULLANILMIŞSA → challenge sıfırlanır.
+ * - Kaçırılan gün varsa ve kurtarma HENÜZ KULLANILMAMIŞSA → challenge
+ *   "kurtarma bekliyor" durumuna geçer (needsRecovery) ve pinlenir; kullanıcı
+ *   ödüllü reklam izleyerek kaçırdığı günü geri kazanır.
+ * - Kullanıcı kurtarmayı kullandıktan sonra YENİ bir gün kaçırırsa →
+ *   challenge sıfırlanır (startDate bugüne alınır).
+ * - Kurtarma beklerken süre dolarsa → başarısız (failed).
  * Saf fonksiyon: yeni challenge listesi + sonuç döner, mutasyon yapmaz.
  */
 export function evaluateChallenges(
@@ -316,7 +320,7 @@ export function evaluateChallenges(
   logs: HabitLog[],
   today: string
 ): { challenges: Challenge[]; evals: ChallengeEvalResult } {
-  const evals: ChallengeEvalResult = { usedGraceIds: [], resetIds: [], completedIds: [] };
+  const evals: ChallengeEvalResult = { needsRecoveryIds: [], resetIds: [], completedIds: [] };
   const next = challenges.map((c) => {
     if (c.status !== "active") return c;
     const habit = habits.find((h) => h.id === c.habitId);
@@ -327,35 +331,48 @@ export function evaluateChallenges(
     // Bugüne kadar geçen ve kaçırılan günleri bul (bugün henüz değerlendirilmez).
     const checkStart = c.startDate;
     const checkEnd = endDate < addDays(today, -1) ? endDate : addDays(today, -1);
-    let missed = false;
+    let firstMissed: string | null = null;
     if (checkStart <= checkEnd) {
       let d = checkStart;
       let guard = 0;
       while (d <= checkEnd && guard++ < 3700) {
         if (!isHabitComplete(habit, logs, d)) {
-          missed = true;
+          firstMissed = d;
           break;
         }
         d = addDays(d, 1);
       }
     }
 
-    if (!missed && checkEnd >= endDate) {
-      // Süre doldu ve tüm günler tamamlandı → başarı.
-      evals.completedIds.push(c.id);
-      return { ...c, status: "completed" as const, completedAt: today };
-    }
-
-    if (missed) {
-      if (!c.usedGrace) {
-        evals.usedGraceIds.push(c.id);
-        return { ...c, usedGrace: true };
+    if (!firstMissed) {
+      if (checkEnd >= endDate) {
+        // Süre doldu ve tüm günler tamamlandı → başarı.
+        evals.completedIds.push(c.id);
+        return { ...c, status: "completed" as const, completedAt: today };
       }
-      evals.resetIds.push(c.id);
-      return { ...c, startDate: today, usedGrace: false };
+      return c;
     }
 
-    return c;
+    // En az bir gün kaçırıldı.
+    if (c.needsRecovery) {
+      // Zaten kurtarma bekliyor: süre dolduysa başarısız, değilse pinlenmiş kalır.
+      if (checkEnd >= endDate) {
+        return { ...c, status: "failed" as const };
+      }
+      return c;
+    }
+    if (checkEnd >= endDate) {
+      // Süre doldu ama kaçırılan gün var ve kurtarma istenmedi → başarısız.
+      return { ...c, status: "failed" as const };
+    }
+    if (c.recoveryUsed) {
+      // Kurtarma bir kez kullanıldı; yeni kaçırma → sıfırla.
+      evals.resetIds.push(c.id);
+      return { ...c, startDate: today, needsRecovery: false, recoveryTargetDate: null, recoveryUsed: false };
+    }
+    // Yeni kaçırma → kurtarma fırsatı sun (pinlenir, sıfırlanmaz).
+    evals.needsRecoveryIds.push(c.id);
+    return { ...c, needsRecovery: true, recoveryTargetDate: firstMissed };
   });
   return { challenges: next, evals };
 }

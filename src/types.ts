@@ -35,7 +35,9 @@ export interface Challenge {
   totalDays: number; // 7 | 21 | 75 | custom
   startDate: string; // YYYY-MM-DD
   habitId: string; // challenge'ı takip eden alışkanlık
-  usedGrace: boolean; // gizli 1 günlük mazeret hakkı kullanıldı mı?
+  needsRecovery: boolean; // kaçırılan gün için ödüllü reklamla kurtarma bekliyor mu?
+  recoveryTargetDate: string | null; // kurtarılabilir kaçırılan ilk gün (YYYY-MM-DD)
+  recoveryUsed: boolean; // bu challenge döngüsünde kurtarma bir kez kullanıldı mı?
   status: ChallengeStatus;
   completedAt?: string;
 }
@@ -75,7 +77,7 @@ export interface TodayStats {
 }
 
 export interface ChallengeEvalResult {
-  usedGraceIds: string[]; // ilk kez kaçıran ve affedilen challenge'lar
-  resetIds: string[]; // mazeret hakkı dolunca sıfırlanan challenge'lar
+  needsRecoveryIds: string[]; // kaçırılan gün olan ve kurtarma fırsatı sunulan challenge'lar
+  resetIds: string[]; // kurtarma kullanıldıktan sonra da kaçırılıp sıfırlanan challenge'lar
   completedIds: string[]; // süresi dolup başarıyla biten challenge'lar
 }
