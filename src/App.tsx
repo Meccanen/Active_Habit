@@ -695,10 +695,11 @@ function ProgressRing({ pct, size = 92, stroke = 9, className }: {
 // ============================================================================
 // ALIŞKANLIK EKLEME / DÜZENLEME MODALI (3 adım)
 // ============================================================================
-function HabitModal({ existing, onSave, onClose, th, lang }: {
+function HabitModal({ existing, onSave, onClose, th, lang, inline }: {
   existing: Habit | null;
   onSave: (h: { name: string; emoji: string; color: string; frequency: Habit["frequency"]; targetPerDay: number; unit: Unit }) => void;
   onClose: () => void; th: typeof THEMES[ThemeKey]; lang: LangCode;
+  inline?: boolean;
 }) {
   const [step, setStep] = useState(1);
   const [name, setName] = useState(existing ? habitDisplayName(existing, lang) : "");
@@ -726,21 +727,22 @@ function HabitModal({ existing, onSave, onClose, th, lang }: {
       targetPerDay: Math.max(1, parseInt(target, 10) || (unit === "minutes" ? 30 : 1)),
       unit,
     });
+    if (inline) onClose();
   };
 
   const weekdayKeys = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
   const weekdayDayValue: number[] = [1, 2, 3, 4, 5, 6, 0];
 
-  return (
-    <Modal onClose={onClose} th={th}>
-      <ModalHeader title={existing ? t("editHabit", lang) : t("newHabit", lang)} onClose={onClose} th={th} />
-      <div className="overflow-y-auto flex-1 p-5 space-y-5">
-        <div className="flex items-center justify-center gap-1.5">
-          {[1, 2, 3].map((s) => (
-            <span key={s} className={`h-1.5 rounded-full transition-all ${s === step ? `w-8 ${th.accent} bg-current` : "w-4 bg-black/15"}`} />
-          ))}
-        </div>
+  const dots = (
+    <div className="flex items-center justify-center gap-1.5">
+      {[1, 2, 3].map((s) => (
+        <span key={s} className={`h-1.5 rounded-full transition-all ${s === step ? `w-8 ${th.accent} bg-current` : "w-4 bg-black/15"}`} />
+      ))}
+    </div>
+  );
 
+  const steps = (
+    <>
         {step === 1 && (
           <div className="space-y-4 animate-fadeIn">
             <div>
@@ -851,27 +853,47 @@ function HabitModal({ existing, onSave, onClose, th, lang }: {
             </div>
           </div>
         )}
-      </div>
+    </>
+  );
 
-      <div className={`p-5 border-t ${th.header}`}>
-        {step < 3 ? (
-          <button onClick={() => step === 1 && !canNext ? null : setStep(step + 1)}
-            disabled={step === 1 && !canNext}
-            className={`w-full py-3 rounded-xl text-sm font-bold transition ${th.accent} border ${th.card} ${step === 1 && !canNext ? "opacity-40" : ""}`}>
-            {t("next", lang)}
+  const footer = (
+    <>
+      {step < 3 ? (
+        <button onClick={() => step === 1 && !canNext ? null : setStep(step + 1)}
+          disabled={step === 1 && !canNext}
+          className={`w-full py-3 rounded-xl text-sm font-bold transition ${th.accent} border ${th.card} ${step === 1 && !canNext ? "opacity-40" : ""}`}>
+          {t("next", lang)}
+        </button>
+      ) : (
+        <div className="flex gap-2">
+          <button onClick={() => setStep(2)}
+            className={`flex-1 py-3 rounded-xl text-sm font-semibold border ${th.card} ${th.textSecondary}`}>
+            {t("back", lang)}
           </button>
-        ) : (
-          <div className="flex gap-2">
-            <button onClick={() => setStep(2)}
-              className={`flex-1 py-3 rounded-xl text-sm font-semibold border ${th.card} ${th.textSecondary}`}>
-              {t("back", lang)}
-            </button>
-            <button onClick={submit}
-              className={`flex-[2] py-3 rounded-xl text-sm font-bold border ${th.card} ${th.accent}`}>
-              {t("save", lang)}
-            </button>
-          </div>
-        )}
+          <button onClick={submit}
+            className={`flex-[2] py-3 rounded-xl text-sm font-bold border ${th.card} ${th.accent}`}>
+            {t("save", lang)}
+          </button>
+        </div>
+      )}
+    </>
+  );
+
+  return inline ? (
+    <div className="space-y-4">
+      {dots}
+      {steps}
+      {footer}
+    </div>
+  ) : (
+    <Modal onClose={onClose} th={th}>
+      <ModalHeader title={existing ? t("editHabit", lang) : t("newHabit", lang)} onClose={onClose} th={th} />
+      <div className="overflow-y-auto flex-1 p-5 space-y-5">
+        {dots}
+        {steps}
+      </div>
+      <div className={`p-5 border-t ${th.header}`}>
+        {footer}
       </div>
     </Modal>
   );
@@ -2054,6 +2076,8 @@ export default function App() {
   const [showDetailStats, setShowDetailStats] = useState(false);
   const [confirmDeleteHabit, setConfirmDeleteHabit] = useState<Habit | null>(null);
   const [habitSetPreview, setHabitSetPreview] = useState<HabitSetTemplate | null>(null);
+  const [customHabitOpen, setCustomHabitOpen] = useState(false);
+  const [customChallengeOpen, setCustomChallengeOpen] = useState(false);
   const [expandedPacks, setExpandedPacks] = useState<Record<string, boolean>>({});
   const togglePack = (id: string) => setExpandedPacks((p) => ({ ...p, [id]: !p[id] }));
 
@@ -2574,12 +2598,8 @@ export default function App() {
 
         {/* Alışkanlıklar */}
         <section className="space-y-3">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
             <h2 className={`font-bold text-lg ${th.textPrimary}`}>{t("habitsTitle", lang)}</h2>
-            <button onClick={() => { setEditingHabit(null); setShowHabitModal(true); }}
-              className={`inline-flex items-center gap-1.5 h-[40px] px-4 rounded-full border text-sm font-bold ${th.accent} ${hdrBtnBg} active:scale-95 transition`}>
-              <Plus size={16} /> {t("addHabit", lang)}
-            </button>
           </div>
 
           {activeHabits.length === 0 && (
@@ -2602,13 +2622,13 @@ export default function App() {
             <h2 className={`font-bold text-lg ${th.textPrimary}`}>{t("habitSetsTitle", lang)}</h2>
           </div>
           <p className={`text-xs ${th.textMuted} -mt-2`}>{t("habitSetsSub", lang)}</p>
-          <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
             {HABIT_SETS.map((set) => {
               const added = isHabitSetAdded(state, set.id);
               return (
               <motion.button key={set.id} whileTap={{ scale: 0.97 }}
                 onClick={() => setHabitSetPreview(set)}
-                className={`w-56 shrink-0 text-left rounded-3xl border p-4 shadow-xl transition ${th.card} ${th.cardHover} relative`}>
+                className={`text-left rounded-3xl border p-3 sm:p-4 shadow-xl transition ${th.card} ${th.cardHover} relative`}>
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-3xl drop-shadow">{set.emoji}</span>
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center ${added ? "text-green-500" : th.cardHover}`}>
@@ -2637,11 +2657,11 @@ export default function App() {
           <p className={`text-xs ${th.textMuted} -mt-2`}>{t("challengePacksSub", lang)}</p>
           <div ref={challengePacksRef} className="scroll-mt-4" />
 
-          <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
             {CHALLENGE_TEMPLATES.filter((x) => x.kind === "pack").map((tpl) => (
               <motion.button key={tpl.id} whileTap={{ scale: 0.97 }}
                 onClick={() => setTemplatePending(tpl)}
-                className={`w-52 shrink-0 text-left rounded-3xl border p-4 shadow-xl transition ${th.card} ${th.cardHover} relative`}>
+                className={`text-left rounded-3xl border p-3 sm:p-4 shadow-xl transition ${th.card} ${th.cardHover} relative`}>
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-3xl drop-shadow">{tpl.emoji}</span>
                   <span className={`shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-full border ${th.accent} ${th.card}`}>
@@ -2658,38 +2678,13 @@ export default function App() {
               </motion.button>
             ))}
           </div>
-
-          <div className="pt-1">
-            <p className={`text-[11px] uppercase tracking-wide mb-2 ${th.textMuted}`}>{t("dayTemplatesTitle", lang)}</p>
-            <div className="flex gap-2.5 overflow-x-auto pb-1 -mx-1 px-1">
-              {CHALLENGE_TEMPLATES.filter((x) => x.kind === "days").map((tpl) => (
-                <motion.button key={tpl.id} whileTap={{ scale: 0.97 }}
-                  onClick={() => setTemplatePending(tpl)}
-                  className={`shrink-0 text-left rounded-2xl border px-4 py-3 transition ${th.card} ${th.cardHover}`}>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xl">{tpl.emoji}</span>
-                    <div>
-                      <p className={`font-semibold text-sm ${th.textPrimary}`}>{t(tpl.nameKey, lang)}</p>
-                      <p className={`text-[10px] ${th.textMuted}`}>{t(`days${tpl.days}`, lang)}</p>
-                    </div>
-                  </div>
-                </motion.button>
-              ))}
-            </div>
-          </div>
         </section>
 
-        {/* Challenge'lar */}
+        {/* Challenge'larım */}
         <section className="space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Zap size={18} className={th.accent} />
-              <h2 className={`font-bold text-lg ${th.textPrimary}`}>{t("challengesTitle", lang)}</h2>
-            </div>
-            <button onClick={scrollToChallengePacks}
-              className={`inline-flex items-center gap-1.5 h-[40px] px-4 rounded-full border text-sm font-bold ${th.accent} ${hdrBtnBg} active:scale-95 transition`}>
-              <Plus size={16} /> {t("newChallenge", lang)}
-            </button>
+          <div className="flex items-center gap-2">
+            <Zap size={18} className={th.accent} />
+            <h2 className={`font-bold text-lg ${th.textPrimary}`}>{t("challengesTitle", lang)}</h2>
           </div>
           <p className={`text-xs ${th.textMuted} -mt-2`}>{t("challengesSub", lang)}</p>
 
@@ -2760,6 +2755,65 @@ export default function App() {
               ))}
             </div>
           )}
+        </section>
+
+        {/* Özelleştir */}
+        <section className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Settings size={18} className={th.accent} />
+            <h2 className={`font-bold text-lg ${th.textPrimary}`}>{t("customizeTitle", lang)}</h2>
+          </div>
+          <p className={`text-xs ${th.textMuted} -mt-2`}>{t("customizeSub", lang)}</p>
+
+          <div className={`rounded-3xl border ${th.card} overflow-hidden`}>
+            <button onClick={() => setCustomHabitOpen(!customHabitOpen)}
+              className={`w-full flex items-center justify-between gap-3 p-4 text-left transition`}>
+              <span className="flex items-center gap-3">
+                <span className="text-2xl">✏️</span>
+                <span className={`font-bold text-sm ${th.textPrimary}`}>{t("customHabitAcc", lang)}</span>
+              </span>
+              <ChevronDown size={20} className={`shrink-0 transition-transform ${customHabitOpen ? "rotate-180" : ""} ${th.textMuted}`} />
+            </button>
+            <AnimatePresence initial={false}>
+              {customHabitOpen && (
+                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25 }} className="overflow-hidden">
+                  <div className="px-4 pb-5 pt-2 border-t">
+                    <HabitModal existing={null} onSave={handleSaveHabit} onClose={() => setCustomHabitOpen(false)} th={th} lang={lang} inline />
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          <div className={`rounded-3xl border ${th.card} overflow-hidden`}>
+            <button onClick={() => setCustomChallengeOpen(!customChallengeOpen)}
+              className={`w-full flex items-center justify-between gap-3 p-4 text-left transition`}>
+              <span className="flex items-center gap-3">
+                <span className="text-2xl">🏁</span>
+                <span className={`font-bold text-sm ${th.textPrimary}`}>{t("customChallengeAcc", lang)}</span>
+              </span>
+              <ChevronDown size={20} className={`shrink-0 transition-transform ${customChallengeOpen ? "rotate-180" : ""} ${th.textMuted}`} />
+            </button>
+            <AnimatePresence initial={false}>
+              {customChallengeOpen && (
+                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25 }} className="overflow-hidden">
+                  <div className="px-4 pb-5 pt-3 border-t">
+                    <div className="grid grid-cols-3 gap-2.5">
+                      {CHALLENGE_TEMPLATES.filter((x) => x.kind === "days").map((tpl) => (
+                        <motion.button key={tpl.id} whileTap={{ scale: 0.97 }}
+                          onClick={() => setTemplatePending(tpl)}
+                          className={`text-left rounded-2xl border p-3 transition ${th.card} ${th.cardHover}`}>
+                          <span className="text-2xl block">{tpl.emoji}</span>
+                          <p className={`font-semibold text-xs mt-1.5 leading-tight ${th.textPrimary}`}>{t(tpl.nameKey, lang)}</p>
+                          <p className={`text-[10px] mt-0.5 ${th.textMuted}`}>{t(`days${tpl.days}`, lang)}</p>
+                        </motion.button>
+                      ))}
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </section>
 
         <p className={`text-center text-xs ${th.textMuted} pt-2 pb-4`}>{t("tagline", lang)}</p>
