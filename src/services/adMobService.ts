@@ -187,8 +187,12 @@ export function getRewardCooldownLeft(): number {
  *   mahrum bırakmamak tercih edildi; bu bilinçli bir ürün kararıdır).
  * - Kullanıcı reklamı ödül kazanmadan kapatırsa: false döner, içerik AÇILMAZ.
  */
-export async function unlockWithRewardedInterstitial(): Promise<boolean> {
-  if (rewardedUntil > Date.now()) return true;
+export async function unlockWithRewardedInterstitial(opts?: { skipCooldown?: boolean }): Promise<boolean> {
+  // Varsayılan: oturum içi 5 dk koolDown geçerliyse reklam göstermeden ödülü
+  // ver. skipCooldown: (ör. challenge kurtarma) HER seferde gerçek reklam
+  // izlet — çoklu kurtarmada bir kez izlenen reklam diğerlerini bedavaya
+  // kapatmasın.
+  if (!opts?.skipCooldown && rewardedUntil > Date.now()) return true;
 
   if (!REWARDED_INTERSTITIAL_AD_UNIT_ID) {
     console.warn('[adMobService] VITE_ADMOB_REWARDED_INTERSTITIAL_ID tanımlı değil, kilit açık bırakılıyor.');

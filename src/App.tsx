@@ -2470,7 +2470,7 @@ export default function App() {
     const ch = s.challenges.find((c) => c.id === id);
     if (!ch || ch.status !== "active" || !ch.needsRecovery) return;
     setRecovering(true);
-    const unlocked = await unlockWithRewardedInterstitial();
+    const unlocked = await unlockWithRewardedInterstitial({ skipCooldown: true });
     setRecovering(false);
     if (!unlocked) return;
     const next = recoverChallengeDays(s, id, todayStr());
