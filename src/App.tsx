@@ -904,10 +904,30 @@ function HabitModal({ existing, onSave, onClose, th, lang, inline }: {
 // ============================================================================
 function TemplateNameModal({ template, onSave, onClose, th, lang }: {
   template: ChallengeTemplate;
-  onSave: (name: string) => void;
+  onSave: (name: string, unit: Unit, targetPerDay: number) => void;
   onClose: () => void; th: typeof THEMES[ThemeKey]; lang: LangCode;
 }) {
   const [name, setName] = useState(t(template.nameKey, lang));
+  const isDays = template.kind !== "pack";
+  const [unit, setUnit] = useState<Unit>(isDays ? "count" : template.habitUnit ?? "count");
+  const [target, setTarget] = useState(isDays ? "1" : String(template.targetPerDay));
+
+  const switchUnit = (next: Unit) => {
+    setUnit(next);
+    setTarget((cur) => {
+      const seen = /^\d+$/.test(cur) ? parseInt(cur, 10) : 0;
+      if (next === "minutes" && seen === 1) return "30";
+      if (next === "count" && seen === 30) return "1";
+      return cur;
+    });
+  };
+
+  const parsedTarget = Math.max(1, parseInt(target, 10) || (unit === "minutes" ? 30 : 1));
+
+  const submit = () => {
+    if (isDays) onSave(name, unit, parsedTarget);
+    else onSave(name, template.habitUnit ?? "count", template.targetPerDay);
+  };
 
   return (
     <Modal onClose={onClose} th={th}>
@@ -919,11 +939,34 @@ function TemplateNameModal({ template, onSave, onClose, th, lang }: {
             <div className="flex-1 min-w-0">
               <p className={`font-semibold text-sm ${th.textPrimary}`}>{t(template.nameKey, lang)}</p>
               <p className={`text-xs mt-0.5 ${th.textMuted}`}>
-                {t(`days${template.days}`, lang)} · {template.targetPerDay} {template.habitUnit === "minutes" ? t("minutesPerDay", lang) : t("timesPerDay", lang)}
+                {t(`days${template.days}`, lang)} · {parsedTarget} {unit === "minutes" ? t("minutesPerDay", lang) : t("timesPerDay", lang)}
               </p>
             </div>
           </div>
         </div>
+
+        {isDays && (
+          <div className={`rounded-2xl border p-4 ${th.card}`}>
+            <p className={`text-xs uppercase tracking-wide mb-2 ${th.textMuted}`}>{t("dailyGoal", lang)}</p>
+            <div className="grid grid-cols-2 gap-2">
+              <button onClick={() => switchUnit("count")}
+                className={`px-4 py-2.5 rounded-xl text-sm font-semibold border transition ${unit === "count" ? th.accent + " ring-2 ring-offset-2 " + th.accent : th.card + " " + th.cardHover}`}>
+                {t("unitCount", lang)}
+              </button>
+              <button onClick={() => switchUnit("minutes")}
+                className={`px-4 py-2.5 rounded-xl text-sm font-semibold border transition ${unit === "minutes" ? th.accent + " ring-2 ring-offset-2 " + th.accent : th.card + " " + th.cardHover}`}>
+                ⏱ {t("unitMinutes", lang)}
+              </button>
+            </div>
+            <div className="flex items-center gap-2 mt-3">
+              <input type="text" inputMode="numeric" pattern="[0-9]*" value={target}
+                onChange={(e) => setTarget(e.target.value.replace(/[^0-9]/g, ""))}
+                className={`w-24 px-4 py-3 rounded-xl border bg-transparent text-sm outline-none ${th.card} ${th.textPrimary}`} />
+              <span className={`text-sm ${th.textSecondary}`}>{unit === "minutes" ? t("minutesPerDay", lang) : t("timesPerDay", lang)}</span>
+            </div>
+          </div>
+        )}
+
         <div>
           <p className={`text-xs uppercase tracking-wide mb-2 ${th.textMuted}`}>{t("challengeName", lang)}</p>
           <input value={name} onChange={(e) => setName(e.target.value)} maxLength={60}
@@ -933,7 +976,7 @@ function TemplateNameModal({ template, onSave, onClose, th, lang }: {
         </div>
       </div>
       <div className={`p-5 border-t ${th.header}`}>
-        <button onClick={() => onSave(name)}
+        <button onClick={submit}
           className={`w-full py-3 rounded-xl text-sm font-bold border ${th.card} ${th.accent}`}>
           {t("startChallenge", lang)}
         </button>
@@ -2377,9 +2420,9 @@ export default function App() {
     setEditingHabit(null);
   };
 
-  const handlePickTemplate = (tpl: ChallengeTemplate, name?: string) => {
+  const handlePickTemplate = (tpl: ChallengeTemplate, name?: string, unit?: Unit, targetPerDay?: number) => {
     const finalName = (name || "").trim();
-    const next = createChallengeFromTemplate(stateRef.current, tpl, finalName, todayStr(), lang);
+    const next = createChallengeFromTemplate(stateRef.current, tpl, finalName, todayStr(), lang, { unit, targetPerDay });
     setStateRaw(next);
     setTemplatePending(null);
     notify(t("startChallenge", lang));
@@ -2834,7 +2877,7 @@ export default function App() {
 
       {templatePending && (
         <TemplateNameModal template={templatePending}
-          onSave={(name) => handlePickTemplate(templatePending, name)}
+          onSave={(name, unit, targetPerDay) => handlePickTemplate(templatePending, name, unit, targetPerDay)}
           onClose={() => setTemplatePending(null)} th={th} lang={lang} />
       )}
 

@@ -500,17 +500,20 @@ export function createChallengeFromTemplate(
   template: ChallengeTemplate,
   name: string,
   startDate: string,
-  lang: string
+  lang: string,
+  overrides?: { unit?: Unit; targetPerDay?: number }
 ): AppState {
   const storedName = templateStoredName(name, template) || template.nameKey;
+  const unit: Unit = overrides?.unit ?? template.habitUnit ?? "count";
+  const targetPerDay = overrides?.targetPerDay ?? template.targetPerDay;
   const habit: Habit = {
     id: makeId("habit"),
     name: storedName,
     emoji: template.habitEmoji ?? template.emoji,
     color: template.habitColor ?? "accent",
     frequency: { kind: "daily" },
-    targetPerDay: template.targetPerDay,
-    unit: template.habitUnit ?? "count",
+    targetPerDay,
+    unit,
     createdAt: todayStr(),
     archived: false,
     order: state.habits.length,
