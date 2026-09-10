@@ -312,7 +312,7 @@ function habitDisplayName(h: Habit, lang: LangCode): string {
     const item = set?.habits.find((it) => it.emoji === h.emoji);
     if (item) return t(item.nameKey, lang);
   }
-  const isKey = h.name.startsWith("set") || h.name.startsWith("template");
+  const isKey = h.name.startsWith("set") || h.name.startsWith("template") || h.name.startsWith("pack");
   return isKey ? t(h.name, lang) : h.name;
 }
 
@@ -326,7 +326,7 @@ function challengeDisplayName(c: Challenge, lang: LangCode): string {
     const tpl = CHALLENGE_TEMPLATES.find((t) => t.id === c.templateId);
     if (tpl) return t(tpl.nameKey, lang);
   }
-  const isKey = c.name.startsWith("set") || c.name.startsWith("template");
+  const isKey = c.name.startsWith("set") || c.name.startsWith("template") || c.name.startsWith("pack");
   return isKey ? t(c.name, lang) : c.name;
 }
 
@@ -882,64 +882,6 @@ function HabitModal({ existing, onSave, onClose, th, lang }: {
             </button>
           </div>
         )}
-      </div>
-    </Modal>
-  );
-}
-
-// ============================================================================
-// CHALLENGE SEÇİCİ — şablonlar + özel
-// ============================================================================
-function ChallengePicker({ onPickTemplate, onCustom, onClose, th, lang, customUnlocked }: {
-  onPickTemplate: (tpl: ChallengeTemplate) => void;
-  onCustom: () => void;
-  onClose: () => void; th: typeof THEMES[ThemeKey]; lang: LangCode;
-  customUnlocked: boolean;
-}) {
-  return (
-    <Modal onClose={onClose} th={th}>
-      <ModalHeader title={t("newChallenge", lang)} onClose={onClose} th={th} />
-      <div className="overflow-y-auto flex-1 p-5 space-y-4">
-        <p className={`text-xs uppercase tracking-wide ${th.textMuted}`}>{t("templatesTitle", lang)}</p>
-        {CHALLENGE_TEMPLATES.map((tpl) => (
-          <button key={tpl.id} onClick={() => onPickTemplate(tpl)}
-            className={`w-full text-left rounded-2xl border p-4 transition active:scale-[0.98] ${th.card} ${th.cardHover}`}>
-            <div className="flex items-center gap-3">
-              <span className="text-3xl">{tpl.emoji}</span>
-              <div className="flex-1 min-w-0">
-                <p className={`font-semibold text-sm ${th.textPrimary}`}>{t(tpl.nameKey, lang)}</p>
-                <p className={`text-xs mt-0.5 ${th.textMuted}`}>
-                  {t(`${tpl.nameKey}Desc`, lang)}
-                </p>
-              </div>
-              <span className={`shrink-0 text-xs font-bold px-3 py-1.5 rounded-full border ${th.accent} ${th.card}`}>
-                {t(`days${tpl.days}`, lang)}
-              </span>
-            </div>
-          </button>
-        ))}
-
-        <div className="pt-2">
-          <button onClick={onCustom}
-            className={`w-full text-left rounded-2xl border p-4 transition active:scale-[0.98] ${th.card} ${th.cardHover}`}>
-            <div className="flex items-center gap-3">
-              {customUnlocked ? (
-                <span className="text-3xl">✨</span>
-              ) : (
-                <span className={`w-9 h-9 flex items-center justify-center rounded-xl ${th.accent} bg-current/10`}><Lock size={16} /></span>
-              )}
-              <div className="flex-1 min-w-0">
-                <p className={`font-semibold text-sm ${th.textPrimary}`}>{t("customChallenge", lang)}</p>
-                <p className={`text-xs mt-0.5 ${th.textMuted}`}>{t("customChallengeDesc", lang)}</p>
-              </div>
-              {!customUnlocked && (
-                <span className={`shrink-0 text-xs font-semibold px-2.5 py-1.5 rounded-full border ${th.accent}`}>
-                  {t("rewardSkipHint", lang)}
-                </span>
-              )}
-            </div>
-          </button>
-        </div>
       </div>
     </Modal>
   );
@@ -2205,7 +2147,8 @@ export default function App() {
   const setNotifPrefs = (p: NotifPrefs) => { writeNotifPrefs(p); setNotifPrefsState(p); };
   const [showHabitModal, setShowHabitModal] = useState(false);
   const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
-  const [showChallengePicker, setShowChallengePicker] = useState(false);
+  const challengePacksRef = useRef<HTMLDivElement>(null);
+  const scrollToChallengePacks = () => challengePacksRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   const [templatePending, setTemplatePending] = useState<ChallengeTemplate | null>(null);
   const [showCustomModal, setShowCustomModal] = useState(false);
   const [challengeDetail, setChallengeDetail] = useState<Challenge | null>(null);
@@ -2519,24 +2462,21 @@ export default function App() {
     const next = createChallengeFromTemplate(stateRef.current, tpl, finalName, todayStr(), lang);
     setStateRaw(next);
     setTemplatePending(null);
-    setShowChallengePicker(false);
     notify(t("startChallenge", lang));
   };
 
   const handleSaveCustom = (o: { name: string; emoji: string; totalDays: number; startDate: string; targetPerDay: number; color: string }) => {
     setStateRaw(createCustomChallenge(stateRef.current, o));
     setShowCustomModal(false);
-    setShowChallengePicker(false);
     notify(t("startChallenge", lang));
   };
 
   const handleOpenCustom = async () => {
-    if (!CUSTOM_CHALLENGE_REWARD) { setCustomUnlocked(true); setShowChallengePicker(false); setShowCustomModal(true); return; }
-    if (customUnlocked) { setShowChallengePicker(false); setShowCustomModal(true); return; }
+    if (!CUSTOM_CHALLENGE_REWARD) { setCustomUnlocked(true); setShowCustomModal(true); return; }
+    if (customUnlocked) { setShowCustomModal(true); return; }
     const granted = await unlockWithRewardedInterstitial();
     if (granted) {
       setCustomUnlocked(true);
-      setShowChallengePicker(false);
       setShowCustomModal(true);
     }
   };
@@ -2808,6 +2748,77 @@ export default function App() {
           </div>
         </section>
 
+        {/* Challenge Paketleri */}
+        <section className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Zap size={18} className={th.accent} />
+            <h2 className={`font-bold text-lg ${th.textPrimary}`}>{t("challengePacksTitle", lang)}</h2>
+          </div>
+          <p className={`text-xs ${th.textMuted} -mt-2`}>{t("challengePacksSub", lang)}</p>
+          <div ref={challengePacksRef} className="scroll-mt-4" />
+
+          <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
+            {CHALLENGE_TEMPLATES.filter((x) => x.kind === "pack").map((tpl) => (
+              <motion.button key={tpl.id} whileTap={{ scale: 0.97 }}
+                onClick={() => setTemplatePending(tpl)}
+                className={`w-52 shrink-0 text-left rounded-3xl border p-4 shadow-xl transition ${th.card} ${th.cardHover} relative`}>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-3xl drop-shadow">{tpl.emoji}</span>
+                  <span className={`shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-full border ${th.accent} ${th.card}`}>
+                    {t(`days${tpl.days}`, lang)}
+                  </span>
+                </div>
+                <p className={`font-bold text-sm leading-tight ${th.textPrimary}`}>{t(tpl.nameKey, lang)}</p>
+                <p className={`text-[11px] leading-snug mt-1 ${th.textMuted}`}>{t(`${tpl.nameKey}Desc`, lang)}</p>
+                <div className={`flex items-center gap-1 mt-2 text-[11px] font-semibold ${th.textSecondary}`}>
+                  <span>{tpl.habitEmoji ?? tpl.emoji}</span>
+                  <span>{tpl.targetPerDay}</span>
+                  <span>{tpl.habitUnit === "minutes" ? t("minutes", lang) : t("times", lang)} / {t("daily", lang).toLowerCase()}</span>
+                </div>
+              </motion.button>
+            ))}
+          </div>
+
+          <button onClick={handleOpenCustom}
+            className={`w-full text-left rounded-3xl border p-4 transition active:scale-[0.98] ${th.card} ${th.cardHover}`}>
+            <div className="flex items-center gap-3">
+              {customUnlocked ? (
+                <span className="text-3xl">✨</span>
+              ) : (
+                <span className={`w-9 h-9 flex items-center justify-center rounded-xl ${th.accent} bg-current/10`}><Lock size={16} /></span>
+              )}
+              <div className="flex-1 min-w-0">
+                <p className={`font-semibold text-sm ${th.textPrimary}`}>{t("customChallenge", lang)}</p>
+                <p className={`text-xs mt-0.5 ${th.textMuted}`}>{t("customChallengeDesc", lang)}</p>
+              </div>
+              {!customUnlocked && (
+                <span className={`shrink-0 text-xs font-semibold px-2.5 py-1.5 rounded-full border ${th.accent}`}>
+                  {t("rewardSkipHint", lang)}
+                </span>
+              )}
+            </div>
+          </button>
+
+          <div className="pt-1">
+            <p className={`text-[11px] uppercase tracking-wide mb-2 ${th.textMuted}`}>{t("dayTemplatesTitle", lang)}</p>
+            <div className="flex gap-2.5 overflow-x-auto pb-1 -mx-1 px-1">
+              {CHALLENGE_TEMPLATES.filter((x) => x.kind === "days").map((tpl) => (
+                <motion.button key={tpl.id} whileTap={{ scale: 0.97 }}
+                  onClick={() => setTemplatePending(tpl)}
+                  className={`shrink-0 text-left rounded-2xl border px-4 py-3 transition ${th.card} ${th.cardHover}`}>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xl">{tpl.emoji}</span>
+                    <div>
+                      <p className={`font-semibold text-sm ${th.textPrimary}`}>{t(tpl.nameKey, lang)}</p>
+                      <p className={`text-[10px] ${th.textMuted}`}>{t(`days${tpl.days}`, lang)}</p>
+                    </div>
+                  </div>
+                </motion.button>
+              ))}
+            </div>
+          </div>
+        </section>
+
         {/* Challenge'lar */}
         <section className="space-y-3">
           <div className="flex items-center justify-between">
@@ -2815,7 +2826,7 @@ export default function App() {
               <Zap size={18} className={th.accent} />
               <h2 className={`font-bold text-lg ${th.textPrimary}`}>{t("challengesTitle", lang)}</h2>
             </div>
-            <button onClick={() => setShowChallengePicker(true)}
+            <button onClick={scrollToChallengePacks}
               className={`inline-flex items-center gap-1.5 h-[40px] px-4 rounded-full border text-sm font-bold ${th.accent} ${hdrBtnBg} active:scale-95 transition`}>
               <Plus size={16} /> {t("newChallenge", lang)}
             </button>
@@ -2823,7 +2834,7 @@ export default function App() {
           <p className={`text-xs ${th.textMuted} -mt-2`}>{t("challengesSub", lang)}</p>
 
           {activeChallenges.length === 0 && (
-            <button onClick={() => setShowChallengePicker(true)}
+            <button onClick={scrollToChallengePacks}
               className={`w-full text-left rounded-3xl border-2 border-dashed p-5 transition ${th.card} ${th.cardHover}`}>
               <div className="flex items-center gap-4">
                 <span className="text-3xl">🏆</span>
@@ -2905,13 +2916,6 @@ export default function App() {
       {showHabitModal && (
         <HabitModal existing={editingHabit} onSave={handleSaveHabit}
           onClose={() => { setShowHabitModal(false); setEditingHabit(null); }} th={th} lang={lang} />
-      )}
-
-      {showChallengePicker && (
-        <ChallengePicker customUnlocked={customUnlocked}
-          onPickTemplate={(tpl) => { setShowChallengePicker(false); setTemplatePending(tpl); }}
-          onCustom={handleOpenCustom}
-          onClose={() => setShowChallengePicker(false)} th={th} lang={lang} />
       )}
 
       {templatePending && (

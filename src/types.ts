@@ -48,6 +48,10 @@ export interface ChallengeTemplate {
   targetPerDay: number;
   color: string;
   startCount: number; // günde kaç tekrar (ör. 8 bardak)
+  kind?: "days" | "pack"; // days = süre bazlı (7/14/21/...), pack = temalı paket
+  habitEmoji?: string; // paketin bağlı alışkanlığının emojisi (yoksa template.emoji)
+  habitUnit?: Unit; // paketin alışkanlık birimi (yoksa "count")
+  habitColor?: string; // paketin alışkanlık rengi (yoksa "accent")
 }
 
 export interface AppState {
