@@ -11,6 +11,7 @@ import {
   todayStr,
 } from "../utils/habitHelper";
 import { t, LangCode } from "../utils/i18n";
+import { resolveHabitName } from "./habitService";
 
 export interface NotifPrefs {
   checkinOn: boolean;
@@ -177,7 +178,7 @@ function pickCheckinText(
     .sort((a, b) => a.rate - b.rate)[0];
   if (worst && worst.rate < 67 && worst.due > 0) {
     pool.push(
-      t("notifBodyMissed", lang, { emoji: worst.h.emoji, name: worst.h.name })
+      t("notifBodyMissed", lang, { emoji: worst.h.emoji, name: resolveHabitName(worst.h, lang) })
     );
   }
   pool.push(t("notifBodyGeneric", lang));

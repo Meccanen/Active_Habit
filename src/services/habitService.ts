@@ -201,7 +201,22 @@ export const CHALLENGE_TEMPLATES: ChallengeTemplate[] = [
   },
 ];
 
-export const CHALLENGE_DAY_OPTIONS = [7, 14, 21, 30, 75] as const;
+/**
+ * Bir habit'in görünen adını döndürür. Hazır paket habit'leri packId + emoji
+ * ile çözülür; şablon/paket challenge habit'leri ise nameKey olduğu için
+ * (template, set ve pack ön ekli anahtarlar) dile göre çevrilir. Özel adlar
+ * aynen döner. Liste görünümü ve bildirim metinleri bu ortak yardımcıyı
+ * kullanır.
+ */
+export function resolveHabitName(h: Pick<Habit, "name" | "packId" | "emoji">, lang: LangCode): string {
+  if (h.packId) {
+    const set = HABIT_SETS.find((s) => s.id === h.packId);
+    const item = set?.habits.find((it) => it.emoji === h.emoji);
+    if (item) return t(item.nameKey, lang);
+  }
+  const isKey = h.name.startsWith("set") || h.name.startsWith("template") || h.name.startsWith("pack");
+  return isKey ? t(h.name, lang) : h.name;
+}
 
 export function loadState(): AppState {
   try {
@@ -471,40 +486,6 @@ export function createChallengeFromTemplate(
     name: storedName,
     totalDays: template.days,
     startDate,
-    habitId: habit.id,
-    usedGrace: false,
-    status: "active",
-  };
-  return {
-    habits: [...state.habits, habit],
-    challenges: [...state.challenges, challenge],
-    logs: state.logs,
-  };
-}
-
-export function createCustomChallenge(
-  state: AppState,
-  opts: { name: string; emoji: string; totalDays: number; startDate: string; targetPerDay: number; color: string }
-): AppState {
-  const habit: Habit = {
-    id: makeId("habit"),
-    name: opts.name.trim() || "Custom Challenge",
-    emoji: opts.emoji,
-    color: opts.color,
-    frequency: { kind: "daily" },
-    targetPerDay: opts.targetPerDay,
-    unit: "count",
-    createdAt: todayStr(),
-    archived: false,
-    order: state.habits.length,
-  };
-  const challenge: Challenge = {
-    id: makeId("challenge"),
-    templateId: "custom",
-    emoji: opts.emoji,
-    name: habit.name,
-    totalDays: opts.totalDays,
-    startDate: opts.startDate,
     habitId: habit.id,
     usedGrace: false,
     status: "active",

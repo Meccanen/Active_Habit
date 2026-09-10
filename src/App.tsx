@@ -11,9 +11,9 @@ import { t, detectLanguage, LangCode } from "./utils/i18n";
 import {
   HABIT_EMOJIS, HABIT_COLORS, CHALLENGE_TEMPLATES, HABIT_SETS,
   loadState, saveState, addHabit, updateHabit, deleteHabit,
-  toggleLog, createChallengeFromTemplate, createCustomChallenge,
+  toggleLog, createChallengeFromTemplate,
   deleteChallenge, toggleChallengeDay, setLogCount,
-  getActiveHabits, habitLogFor, addHabitSet, isHabitSetAdded,
+  getActiveHabits, habitLogFor, addHabitSet, isHabitSetAdded, resolveHabitName,
   type HabitSetTemplate,
 } from "./services/habitService";
 import {
@@ -232,12 +232,10 @@ const APP_VERSION = "0.1.0";
 
 /**
  * Reklam özellikleri:
- * - CUSTOM_CHALLENGE_REWARD: özel challenge oluşturmak için ödüllü reklam izletecek.
  * - ADVANCED_CHARTS_REWARD: detaylı grafik raporunu kilitleyip ödüllü reklamla açacak
  *   (kullanıcıları grafik görmek için reklam izlemeye motive eder).
  * - SHOW_BANNER_ADS: ana ekranda altta banner reklam gösterecek.
  */
-const CUSTOM_CHALLENGE_REWARD = false;
 const ADVANCED_CHARTS_REWARD = true;
 const SHOW_BANNER_ADS = true;
 
@@ -301,19 +299,11 @@ function firstGrapheme(input: string): string {
 }
 
 /**
- * Hazır paket habit'lerinin adını paket şablonundan çevirir. Eski kayıtlarda
- * habit adı i18n anahtarı yerine literal ("set_...", "setMorning1" gibi)
- * saklanmış olabilir — packId + emoji eşleşmesiyle doğru yerelleştirilmiş
- * ad garanti edilir; eşleşme yoksa t() ile çevrilir.
+ * Habit adını görüntüler. Çözümleme ortak habitService yardımcısında;
+ * paket/sablon/paket-challenge adları dile göre çevrilir, özel adlar aynen kalır.
  */
 function habitDisplayName(h: Habit, lang: LangCode): string {
-  if (h.packId) {
-    const set = HABIT_SETS.find((s) => s.id === h.packId);
-    const item = set?.habits.find((it) => it.emoji === h.emoji);
-    if (item) return t(item.nameKey, lang);
-  }
-  const isKey = h.name.startsWith("set") || h.name.startsWith("template") || h.name.startsWith("pack");
-  return isKey ? t(h.name, lang) : h.name;
+  return resolveHabitName(h, lang);
 }
 
 /**
@@ -907,7 +897,7 @@ function TemplateNameModal({ template, onSave, onClose, th, lang }: {
             <div className="flex-1 min-w-0">
               <p className={`font-semibold text-sm ${th.textPrimary}`}>{t(template.nameKey, lang)}</p>
               <p className={`text-xs mt-0.5 ${th.textMuted}`}>
-                {t(`days${template.days}`, lang)} · {template.targetPerDay} {t("timesPerDay", lang)}
+                {t(`days${template.days}`, lang)} · {template.targetPerDay} {template.habitUnit === "minutes" ? t("minutesPerDay", lang) : t("timesPerDay", lang)}
               </p>
             </div>
           </div>
@@ -922,103 +912,6 @@ function TemplateNameModal({ template, onSave, onClose, th, lang }: {
       </div>
       <div className={`p-5 border-t ${th.header}`}>
         <button onClick={() => onSave(name)}
-          className={`w-full py-3 rounded-xl text-sm font-bold border ${th.card} ${th.accent}`}>
-          {t("startChallenge", lang)}
-        </button>
-      </div>
-    </Modal>
-  );
-}
-
-// ============================================================================
-// ÖZEL CHALLENGE MODALI
-// ============================================================================
-function CustomChallengeModal({ onSave, onClose, th, lang }: {
-  onSave: (o: { name: string; emoji: string; totalDays: number; startDate: string; targetPerDay: number; color: string }) => void;
-  onClose: () => void; th: typeof THEMES[ThemeKey]; lang: LangCode;
-}) {
-  const [name, setName] = useState("");
-  const [emoji, setEmoji] = useState("🎯");
-  const [customDays, setCustomDays] = useState("30");
-  const [startDate, setStartDate] = useState(todayStr());
-  const [target, setTarget] = useState("1");
-  const [color, setColor] = useState("accent");
-
-  return (
-    <Modal onClose={onClose} th={th}>
-      <ModalHeader title={t("customChallenge", lang)} onClose={onClose} th={th} />
-      <div className="overflow-y-auto flex-1 p-5 space-y-4">
-        <div>
-          <p className={`text-xs uppercase tracking-wide mb-2 ${th.textMuted}`}>{t("habitName", lang)}</p>
-          <input value={name} onChange={(e) => setName(e.target.value)} autoFocus
-            className={`w-full px-4 py-3 rounded-xl border bg-transparent text-sm outline-none ${th.card} ${th.textPrimary}`} />
-        </div>
-        <div>
-          <p className={`text-xs uppercase tracking-wide mb-2 ${th.textMuted}`}>{t("chooseIcon", lang)}</p>
-          <div className="grid grid-cols-6 gap-2">
-            {HABIT_EMOJIS.slice(0, 18).map((e) => (
-              <button key={e} onClick={() => setEmoji(e)}
-                className={`h-12 rounded-xl border text-xl transition ${emoji === e ? th.accent + " ring-2 ring-offset-2 " : th.card + " " + th.cardHover}`}>
-                {e}
-              </button>
-            ))}
-            <button onClick={() => setEmoji("")}
-              className={`h-12 rounded-xl border text-xs font-bold transition ${emoji === "" ? th.accent + " ring-2 ring-offset-2 " + th.accent : th.card + " " + th.cardHover}`}>
-              {t("iconNone", lang)}
-            </button>
-          </div>
-          <div className="mt-3">
-            <p className={`text-xs mb-1.5 ${th.textMuted}`}>{t("iconCustom", lang)}</p>
-            <input type="text" value={emoji && !HABIT_EMOJIS.includes(emoji) ? emoji : ""}
-              onChange={(e) => setEmoji(firstGrapheme(e.target.value))}
-              placeholder={t("iconCustomPh", lang)}
-              className={`w-full px-4 py-2.5 rounded-xl border bg-transparent text-sm outline-none ${th.card} ${th.textPrimary}`} />
-          </div>
-        </div>
-        <div>
-          <p className={`text-xs uppercase tracking-wide mb-2 ${th.textMuted}`}>{t("daysTotal", lang).replace("{n}", "").trim()}</p>
-          <div className="flex items-center gap-2">
-            <span className="text-xl">✏️</span>
-            <input type="text" inputMode="numeric" pattern="[0-9]*" min={3} max={365} value={customDays}
-              onChange={(e) => setCustomDays(e.target.value.replace(/[^0-9]/g, ""))}
-              className={`w-28 px-4 py-2.5 rounded-xl border bg-transparent text-sm outline-none ${th.card} ${th.textPrimary}`} />
-            <span className={`text-sm ${th.textMuted}`}>{t("days", lang)}</span>
-          </div>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <p className={`text-xs uppercase tracking-wide mb-2 ${th.textMuted}`}>{t("startsOn", lang)}</p>
-            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)}
-              className={`w-full px-3 py-2.5 rounded-xl border bg-transparent text-sm outline-none ${th.card} ${th.textPrimary}`} />
-          </div>
-          <div>
-            <p className={`text-xs uppercase tracking-wide mb-2 ${th.textMuted}`}>{t("targetPerDay", lang)}</p>
-            <input type="text" inputMode="numeric" pattern="[0-9]*" min={1} max={99} value={target}
-              onChange={(e) => setTarget(e.target.value.replace(/[^0-9]/g, ""))}
-              className={`w-full px-3 py-2.5 rounded-xl border bg-transparent text-sm outline-none ${th.card} ${th.textPrimary}`} />
-          </div>
-        </div>
-        <div>
-          <p className={`text-xs uppercase tracking-wide mb-2 ${th.textMuted}`}>{t("chooseIcon", lang)}</p>
-          <div className="grid grid-cols-4 gap-2">
-            {HABIT_COLORS.map((c) => (
-              <button key={c} onClick={() => setColor(c)}
-                className={`h-10 rounded-xl border flex items-center justify-center transition ${color === c ? "ring-2 ring-offset-2 " + c : th.card + " " + th.cardHover}`}>
-                <span className={`inline-block w-5 h-5 rounded-full ${c} bg-current`} />
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-      <div className={`p-5 border-t ${th.header}`}>
-        <button onClick={() => onSave({
-          name: name.trim(),
-          emoji,
-          totalDays: Math.max(3, parseInt(customDays, 10) || 30),
-          startDate,
-          targetPerDay: Math.max(1, parseInt(target, 10) || 1),
-          color,
-        })}
           className={`w-full py-3 rounded-xl text-sm font-bold border ${th.card} ${th.accent}`}>
           {t("startChallenge", lang)}
         </button>
@@ -2148,9 +2041,13 @@ export default function App() {
   const [showHabitModal, setShowHabitModal] = useState(false);
   const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
   const challengePacksRef = useRef<HTMLDivElement>(null);
-  const scrollToChallengePacks = () => challengePacksRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  const scrollToChallengePacks = () => {
+    const el = challengePacksRef.current;
+    if (!el) return;
+    const top = el.getBoundingClientRect().top + window.scrollY - 12;
+    window.scrollTo({ top: Math.max(top, 0), behavior: "smooth" });
+  };
   const [templatePending, setTemplatePending] = useState<ChallengeTemplate | null>(null);
-  const [showCustomModal, setShowCustomModal] = useState(false);
   const [challengeDetail, setChallengeDetail] = useState<Challenge | null>(null);
   const [showCalendar, setShowCalendar] = useState(false);
   const [showStats, setShowStats] = useState(false);
@@ -2340,7 +2237,6 @@ export default function App() {
   const [toast, setToast] = useState("");
 
   // Ödüllü reklamla kilit: oturum başına 1 kere. Reklam kapalıyken herkese açık.
-  const [customUnlocked, setCustomUnlocked] = useState(isRewardedUnlockedThisSession());
   const [chartsUnlocked, setChartsUnlocked] = useState(isRewardedUnlockedThisSession());
 
   const notify = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 3200); };
@@ -2465,22 +2361,6 @@ export default function App() {
     notify(t("startChallenge", lang));
   };
 
-  const handleSaveCustom = (o: { name: string; emoji: string; totalDays: number; startDate: string; targetPerDay: number; color: string }) => {
-    setStateRaw(createCustomChallenge(stateRef.current, o));
-    setShowCustomModal(false);
-    notify(t("startChallenge", lang));
-  };
-
-  const handleOpenCustom = async () => {
-    if (!CUSTOM_CHALLENGE_REWARD) { setCustomUnlocked(true); setShowCustomModal(true); return; }
-    if (customUnlocked) { setShowCustomModal(true); return; }
-    const granted = await unlockWithRewardedInterstitial();
-    if (granted) {
-      setCustomUnlocked(true);
-      setShowCustomModal(true);
-    }
-  };
-
   // Detaylı grafik raporu ödüllü reklamla açılır (grafik merakı → reklam izleme).
   const handleOpenDetailStats = async () => {
     if (!ADVANCED_CHARTS_REWARD || chartsUnlocked) { setShowDetailStats(true); return; }
@@ -2548,7 +2428,7 @@ export default function App() {
   return (
     <div dir={lang === "ar" || lang === "ur" ? "rtl" : "ltr"}
       style={{ paddingBottom: bannerHeight ? bannerHeight + 12 : undefined }}
-      className={`min-h-screen ${th.bg} ${th.textPrimary} relative overflow-hidden p-3 sm:p-6 md:p-8 transition-colors duration-700`}>
+      className={`min-h-screen ${th.bg} ${th.textPrimary} relative overflow-clip p-3 sm:p-6 md:p-8 transition-colors duration-700`}>
       <div className={`pointer-events-none absolute -top-32 -left-32 w-96 h-96 rounded-full blur-3xl ${th.blob1}`} />
       <div className={`pointer-events-none absolute -bottom-32 -right-32 w-96 h-96 rounded-full blur-3xl ${th.blob2}`} />
 
@@ -2779,26 +2659,6 @@ export default function App() {
             ))}
           </div>
 
-          <button onClick={handleOpenCustom}
-            className={`w-full text-left rounded-3xl border p-4 transition active:scale-[0.98] ${th.card} ${th.cardHover}`}>
-            <div className="flex items-center gap-3">
-              {customUnlocked ? (
-                <span className="text-3xl">✨</span>
-              ) : (
-                <span className={`w-9 h-9 flex items-center justify-center rounded-xl ${th.accent} bg-current/10`}><Lock size={16} /></span>
-              )}
-              <div className="flex-1 min-w-0">
-                <p className={`font-semibold text-sm ${th.textPrimary}`}>{t("customChallenge", lang)}</p>
-                <p className={`text-xs mt-0.5 ${th.textMuted}`}>{t("customChallengeDesc", lang)}</p>
-              </div>
-              {!customUnlocked && (
-                <span className={`shrink-0 text-xs font-semibold px-2.5 py-1.5 rounded-full border ${th.accent}`}>
-                  {t("rewardSkipHint", lang)}
-                </span>
-              )}
-            </div>
-          </button>
-
           <div className="pt-1">
             <p className={`text-[11px] uppercase tracking-wide mb-2 ${th.textMuted}`}>{t("dayTemplatesTitle", lang)}</p>
             <div className="flex gap-2.5 overflow-x-auto pb-1 -mx-1 px-1">
@@ -2922,10 +2782,6 @@ export default function App() {
         <TemplateNameModal template={templatePending}
           onSave={(name) => handlePickTemplate(templatePending, name)}
           onClose={() => setTemplatePending(null)} th={th} lang={lang} />
-      )}
-
-      {showCustomModal && (
-        <CustomChallengeModal onSave={handleSaveCustom} onClose={() => setShowCustomModal(false)} th={th} lang={lang} />
       )}
 
       {challengeDetail && (
