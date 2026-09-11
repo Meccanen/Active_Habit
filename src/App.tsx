@@ -34,7 +34,7 @@ import {
   exportBackupWithShare, readCurrentSettings, parseBackup,
   type BackupSettings,
 } from "./services/backupService";
-import { shareReportBlockAsImage, shareReportBlockAsPdf, shareChallengeCelebration, type ReportBlockOptions } from "./services/reportShare";
+import { shareReportBlockAsImage, shareReportBlockAsPdf, shareChallengeCelebrationAsImage, shareChallengeCelebrationAsPdf, type ReportBlockOptions } from "./services/reportShare";
 import {
   scheduleNotifications, readNotifPrefs, writeNotifPrefs, checkNotificationPermission,
   type NotifPrefs,
@@ -999,10 +999,20 @@ function ChallengeDetailModal({ challenge, habit, logs, today, onToggle, onCance
   onClose: () => void;
   onRecover: (id: string) => void;
   recovering: boolean;
-  onShare: (id: string) => void;
+  onShare: (id: string, mode: "image" | "pdf") => Promise<void>;
   th: typeof THEMES[ThemeKey]; lang: LangCode;
 }) {
   const [confirming, setConfirming] = useState(false);
+  const [sharing, setSharing] = useState<"image" | "pdf" | null>(null);
+  const doShare = async (mode: "image" | "pdf") => {
+    if (sharing) return;
+    setSharing(mode);
+    try {
+      await onShare(challenge.id, mode);
+    } finally {
+      setSharing(null);
+    }
+  };
   const progress = habit
     ? getChallengeProgress(challenge, habit, logs, today)
     : { doneDays: 0, leftDays: challenge.totalDays, pct: 0 };
@@ -1040,10 +1050,23 @@ function ChallengeDetailModal({ challenge, habit, logs, today, onToggle, onCance
         </div>
 
         {challenge.status === "completed" && (
-          <button onClick={() => onShare(challenge.id)}
-            className={`w-full py-2.5 rounded-xl text-sm font-bold border-2 border-emerald-500/40 text-emerald-500 transition active:scale-[0.98]`}>
-            <span className="inline-flex items-center justify-center gap-1.5"><Share2 size={14} /> {t("challengeShare", lang)}</span>
-          </button>
+          <div>
+            <div className="flex items-center gap-2">
+              <button onClick={() => doShare("image")} disabled={sharing !== null}
+                className={`flex items-center justify-center gap-1.5 flex-1 py-2.5 rounded-xl text-sm font-bold border-2 border-emerald-500/40 text-emerald-500 transition active:scale-[0.98] disabled:opacity-50`}>
+                <FileImage size={13} /> {t("shareImage", lang)}
+              </button>
+              <button onClick={() => doShare("pdf")} disabled={sharing !== null}
+                className={`flex items-center justify-center gap-1.5 flex-1 py-2.5 rounded-xl text-sm font-bold border-2 border-emerald-500/40 text-emerald-500 transition active:scale-[0.98] disabled:opacity-50`}>
+                <FileText size={13} /> {t("sharePdf", lang)}
+              </button>
+            </div>
+            {sharing && (
+              <p className={`text-center text-[11px] mt-2 ${th.textMuted}`}>
+                <span className="inline-flex items-center gap-1.5"><Share2 size={12} /> {t("sharing", lang)}</span>
+              </p>
+            )}
+          </div>
         )}
 
         {challenge.needsRecovery && (
@@ -1938,7 +1961,7 @@ function GraceModal({ recoveryChallenges, resetChallenges, completedChallenges, 
   completedChallenges: string[];
   challenges: Challenge[];
   onRecover: (id: string) => void;
-  onShareCompleted: (id: string) => void;
+  onShareCompleted: (id: string, mode: "image" | "pdf") => Promise<void>;
   onStartSuggested: (id: string) => void;
   recovering: boolean;
   onClose: () => void; th: typeof THEMES[ThemeKey]; lang: LangCode;
@@ -1949,6 +1972,16 @@ function GraceModal({ recoveryChallenges, resetChallenges, completedChallenges, 
   };
   const targetOf = (id: string) => challenges.find((x) => x.id === id)?.recoveryTargetDate ?? "";
   const [skippedNext, setSkippedNext] = useState<Record<string, boolean>>({});
+  const [sharing, setSharing] = useState<string | null>(null);
+  const doShare = async (id: string, mode: "image" | "pdf") => {
+    if (sharing) return;
+    setSharing(id);
+    try {
+      await onShareCompleted(id, mode);
+    } finally {
+      setSharing(null);
+    }
+  };
   return (
     <Modal onClose={onClose} th={th}>
       <ModalHeader title={t("challengeWarn", lang)} onClose={onClose} th={th} />
@@ -1964,10 +1997,21 @@ function GraceModal({ recoveryChallenges, resetChallenges, completedChallenges, 
                     <Trophy size={18} className="text-emerald-500 shrink-0 mt-0.5" />
                     <p className="text-xs leading-relaxed text-emerald-500"><b>{nameOf(id)}</b> — {t("challengeDoneCelebration", lang)}</p>
                   </div>
-                  <button onClick={() => onShareCompleted(id)}
-                    className={`w-full py-2.5 rounded-xl text-sm font-bold border border-emerald-500/50 text-emerald-500 transition active:scale-[0.98]`}>
-                    <span className="inline-flex items-center justify-center gap-1.5"><Share2 size={14} /> {t("challengeShare", lang)}</span>
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => doShare(id, "image")} disabled={sharing !== null}
+                      className={`flex items-center justify-center gap-1.5 flex-1 py-2.5 rounded-xl text-sm font-bold border border-emerald-500/50 text-emerald-500 transition active:scale-[0.98] disabled:opacity-50`}>
+                      <FileImage size={13} /> {t("shareImage", lang)}
+                    </button>
+                    <button onClick={() => doShare(id, "pdf")} disabled={sharing !== null}
+                      className={`flex items-center justify-center gap-1.5 flex-1 py-2.5 rounded-xl text-sm font-bold border border-emerald-500/50 text-emerald-500 transition active:scale-[0.98] disabled:opacity-50`}>
+                      <FileText size={13} /> {t("sharePdf", lang)}
+                    </button>
+                  </div>
+                  {sharing === id && (
+                    <p className={`text-center text-[11px] ${th.textMuted}`}>
+                      <span className="inline-flex items-center justify-center gap-1.5"><Share2 size={12} /> {t("sharing", lang)}</span>
+                    </p>
+                  )}
                   {next && !skippedNext[id] && (
                     <div className={`rounded-xl border p-3 space-y-2 ${th.card}`}>
                       <p className={`text-xs font-semibold ${th.textPrimary}`}>{next.emoji} {t("nextChallengeTitle", lang)}</p>
@@ -2542,7 +2586,7 @@ export default function App() {
   };
 
   // ---- Challenge tamamlandığında: paylaş + sıradakini öner ----
-  const handleShareCompleted = async (id: string) => {
+  const handleShareCompleted = async (id: string, mode: "image" | "pdf") => {
     const s = stateRef.current;
     const c = s.challenges.find((x) => x.id === id);
     if (!c) return;
@@ -2556,7 +2600,7 @@ export default function App() {
       d = addDays(d, 1);
     }
     const headerDate = new Date().toLocaleDateString(lang, { day: "2-digit", month: "short", year: "numeric" });
-    const ok = await shareChallengeCelebration({
+    const opts = {
       appName: t("appName", lang),
       headerDate,
       emoji: c.emoji,
@@ -2572,7 +2616,8 @@ export default function App() {
       sealText: t("sealCompleted", lang),
       footer: t("reportSource", lang),
       locale: lang,
-    });
+    };
+    const ok = mode === "pdf" ? await shareChallengeCelebrationAsPdf(opts) : await shareChallengeCelebrationAsImage(opts);
     if (ok) notify(t("challengeShareReady", lang));
   };
 
