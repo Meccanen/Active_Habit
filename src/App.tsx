@@ -1359,7 +1359,6 @@ function DetailStatsModal({ habits, logs, onClose, th, lang }: {
   const last30Ref = useRef<HTMLDivElement>(null);
   const perHabitRef = useRef<HTMLDivElement>(null);
   const consistentRef = useRef<HTMLDivElement>(null);
-  const fullReportRef = useRef<HTMLDivElement>(null);
   const [sharing, setSharing] = useState<number | null>(null);
   const [shareError, setShareError] = useState<string | null>(null);
 
@@ -1373,19 +1372,23 @@ function DetailStatsModal({ habits, logs, onClose, th, lang }: {
   };
 
   const shareFull = async (mode: "image" | "pdf") => {
-    const a4 = fullReportRef.current;
-    if (!a4) return;
     setSharing(0);
     setShareError(null);
+    // A4 kutusu kalıcı olarak DOM'da tutulmaz (geniş `fixed` eleman bazı
+    // WebView'larda orta alanı sola kaydırır); sadece paylaşım anında geçici
+    // olarak üretilip yakalandıktan sonra kaldırılır.
+    const a4 = document.createElement("div");
+    a4.setAttribute("data-report-a4", "1");
+    a4.style.cssText = "position:fixed;top:0;left:-10000px;width:794px;min-height:1123px;background:#ffffff;padding:24px;box-sizing:border-box;";
+    for (const r of [summaryRef, monthReportRef, heatmapRef, donutRef, lineRef, last30Ref, perHabitRef, consistentRef]) {
+      if (!r.current) continue;
+      const clone = r.current.cloneNode(true) as HTMLElement;
+      clone.querySelectorAll(".share-row").forEach((el) => el.remove());
+      clone.style.cssText = "margin:0 0 20px;";
+      a4.appendChild(clone);
+    }
+    document.body.appendChild(a4);
     try {
-      a4.innerHTML = "";
-      for (const r of [summaryRef, monthReportRef, heatmapRef, donutRef, lineRef, last30Ref, perHabitRef, consistentRef]) {
-        if (!r.current) continue;
-        const clone = r.current.cloneNode(true) as HTMLElement;
-        clone.querySelectorAll(".share-row").forEach((el) => el.remove());
-        clone.style.cssText = "margin:0 0 20px;";
-        a4.appendChild(clone);
-      }
       const opts = buildShareOpts();
       if (mode === "image") await shareReportBlockAsImage(a4, opts);
       else await shareReportBlockAsPdf(a4, opts);
@@ -1393,6 +1396,7 @@ function DetailStatsModal({ habits, logs, onClose, th, lang }: {
       console.error("[reportShare]", e);
       setShareError(String(e instanceof Error ? e.message : e));
     } finally {
+      a4.remove();
       setSharing(null);
     }
   };
@@ -1941,13 +1945,6 @@ function DetailStatsModal({ habits, logs, onClose, th, lang }: {
           <p className="text-[11px] text-red-500 break-all px-1">{shareError}</p>
         )}
       </div>
-
-      {/* A4 "Tüm Rapor" paylaşım alanı — ekran dışı, görüntü yakalamada kullanılır */}
-      <div
-        ref={fullReportRef}
-        className="pointer-events-none fixed top-0 left-[-9999px] w-[794px] min-h-[1123px] bg-white p-6"
-        style={{ zIndex: 0 }}
-      />
     </Modal>
   );
 }
